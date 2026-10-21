@@ -1,0 +1,56 @@
+{
+  "seats": {
+    "god": {
+      "model": "luna",
+      "principal": "g001-god"
+    },
+    "p01": {
+      "model": "luna",
+      "principal": "g001-p01"
+    },
+    "p02": {
+      "model": "luna",
+      "principal": "g001-p02"
+    },
+    "p03": {
+      "model": "luna",
+      "principal": "g001-p03"
+    },
+    "p04": {
+      "model": "luna",
+      "principal": "g001-p04"
+    },
+    "p05": {
+      "model": "luna",
+      "principal": "g001-p05"
+    },
+    "p06": {
+      "model": "luna",
+      "principal": "g001-p06"
+    },
+    "p07": {
+      "model": "luna",
+      "principal": "g001-p07"
+    },
+    "p08": {
+      "model": "luna",
+      "principal": "g001-p08"
+    },
+    "p09": {
+      "model": "luna",
+      "principal": "g001-p09"
+    },
+    "p10": {
+      "model": "luna",
+      "principal": "g001-p10"
+    },
+    "p11": {
+      "model": "luna",
+      "principal": "g001-p11"
+    },
+    "p12": {
+      "model": "luna",
+      "principal": "g001-p12"
+    }
+  }
+}

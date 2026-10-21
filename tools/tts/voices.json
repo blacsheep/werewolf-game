@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "engine": "edge-tts",
+  "notes": "每局沿用的固定音色表。中文（普通话）基础音色只有 11 个（zh-CN 6 个、zh-TW 3 个、东北话/陕西话各 1 个；zh-HK 为粤语，不使用），因此 p10、p11、p12 复用基础音色，用更低的音调和更慢的语速区分。narrator 只念上帝视角旁白（引擎事件转写），与上帝本人的主持词分开，避免把旁白当成上帝说过的话。",
+  "speakers": {
+    "god":      {"name": "上帝", "voice": "zh-CN-YunyangNeural",          "rate": "+0%",  "pitch": "+0Hz",   "volume": "+0%", "description": "男声·新闻播音腔，主持词"},
+    "narrator": {"name": "旁白", "voice": "zh-CN-XiaoxiaoNeural",         "rate": "-5%",  "pitch": "+0Hz",   "volume": "+0%", "description": "女声·温和，上帝视角旁白"},
+    "p01":      {"name": "1号",  "voice": "zh-CN-YunxiNeural",            "rate": "+10%", "pitch": "+0Hz",   "volume": "+0%", "description": "男声·阳光"},
+    "p02":      {"name": "2号",  "voice": "zh-CN-XiaoyiNeural",           "rate": "+10%", "pitch": "+0Hz",   "volume": "+0%", "description": "女声·活泼"},
+    "p03":      {"name": "3号",  "voice": "zh-CN-YunjianNeural",          "rate": "+5%",  "pitch": "+0Hz",   "volume": "+0%", "description": "男声·激昂"},
+    "p04":      {"name": "4号",  "voice": "zh-TW-HsiaoChenNeural",        "rate": "+10%", "pitch": "+0Hz",   "volume": "+0%", "description": "女声·台湾口音"},
+    "p05":      {"name": "5号",  "voice": "zh-TW-YunJheNeural",           "rate": "+10%", "pitch": "+0Hz",   "volume": "+0%", "description": "男声·台湾口音"},
+    "p06":      {"name": "6号",  "voice": "zh-CN-liaoning-XiaobeiNeural", "rate": "+10%", "pitch": "+0Hz",   "volume": "+0%", "description": "女声·东北口音"},
+    "p07":      {"name": "7号",  "voice": "zh-CN-YunxiaNeural",           "rate": "+10%", "pitch": "+0Hz",   "volume": "+0%", "description": "男声·少年"},
+    "p08":      {"name": "8号",  "voice": "zh-CN-shaanxi-XiaoniNeural",   "rate": "+10%", "pitch": "+0Hz",   "volume": "+0%", "description": "女声·陕西口音"},
+    "p09":      {"name": "9号",  "voice": "zh-TW-HsiaoYuNeural",          "rate": "+10%", "pitch": "+0Hz",   "volume": "+0%", "description": "女声·台湾口音（较年轻）"},
+    "p10":      {"name": "10号", "voice": "zh-CN-YunxiNeural",            "rate": "-5%",  "pitch": "-20Hz",  "volume": "+0%", "description": "男声·低沉慢速（1号音色的降调变体）"},
+    "p11":      {"name": "11号", "voice": "zh-CN-XiaoyiNeural",           "rate": "-5%",  "pitch": "-18Hz",  "volume": "+0%", "description": "女声·低沉慢速（2号音色的降调变体）"},
+    "p12":      {"name": "12号", "voice": "zh-CN-YunjianNeural",          "rate": "-8%",  "pitch": "-15Hz",  "volume": "+0%", "description": "男声·低沉慢速（3号音色的降调变体）"}
+  },
+  "audio": {
+    "sample_rate": 24000,
+    "bitrate": "48k",
+    "pause_after_line_ms": 450,
+    "pause_on_phase_change_ms": 650
+  }
+}

@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI 狼人杀 · 对局回放</title>
+<style>
+:root{color-scheme:dark;--ink:#f3efe6;--muted:#a9adbb;--faint:#6c7184;--wolf:#e5484d;--god:#f5b84a;--villager:#5b9cf5;--private:#a78bfa;--gold:#f5c451;
+ --top:#090d1f;--bottom:#1b1840;--felt:rgba(34,40,74,.6);--line:#2c2f45;--card:rgba(8,10,20,.82);--accent:var(--gold)}
+body[data-time=day]{--top:#17130f;--bottom:#2a211a;--felt:rgba(60,47,34,.6);--line:#3a3029}
+*{box-sizing:border-box}
+html{background:#090d1f}
+body{margin:0;min-height:100vh;color:var(--ink);font-family:"Noto Sans CJK SC","PingFang SC","Microsoft YaHei",sans-serif;background:linear-gradient(var(--top),var(--bottom)) fixed;transition:background .6s}
+button,select,input{font:inherit;color:inherit}
+button,select{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:999px;padding:7px 16px;cursor:pointer}
+button:hover:not(:disabled),select:hover{border-color:rgba(255,255,255,.4)}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
+button:disabled{opacity:.35;cursor:default}
+.app{max-width:1280px;margin:auto;height:100vh;min-height:640px;padding:16px 40px 10px;display:grid;grid-template-rows:auto minmax(360px,1fr) auto auto auto;gap:10px}
+header{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:16px;border-bottom:1px solid var(--line);padding-bottom:14px}
+.brand{font-weight:700;font-size:24px;letter-spacing:1px;white-space:nowrap}.edition{font-size:12px;color:var(--muted);margin-left:12px;font-weight:400;letter-spacing:0}
+#phase{margin:0;font-size:21px;font-weight:700;display:flex;align-items:center;gap:10px;white-space:nowrap}
+#phase::before{content:"";width:20px;height:20px;border-radius:50%;background:#ffcf6b;box-shadow:0 0 12px #ffcf6b88}
+body[data-time=night] #phase::before{background:transparent;box-shadow:inset -6px -3px 0 0 #c9d1ff}
+.right{display:flex;justify-content:flex-end;align-items:center;gap:8px;flex-wrap:wrap}
+.camps{display:flex;gap:6px}.camp{border:2px solid currentColor;border-radius:999px;padding:1px 10px;font-size:13px;font-weight:700}
+.views{display:flex;background:rgba(255,255,255,.06);border-radius:999px;padding:3px}
+.views button{border:0;background:none;padding:5px 14px;font-size:13px}
+.views button[aria-pressed=true]{background:var(--ink);color:#141414;font-weight:700}
+#table{position:relative;width:100%;height:100%;min-height:360px}
+.felt{position:absolute;inset:14% 16%;border-radius:50%;background:var(--felt);border:1px solid rgba(255,255,255,.1);transition:background .6s}
+.center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;width:46%}
+#perspective{font-size:12px;color:var(--muted);letter-spacing:2px}
+#speaker{font-size:38px;font-weight:700;margin:4px 0 8px;line-height:1.2}
+#summary{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.tag{border:2px solid var(--c,var(--muted));color:var(--c,var(--muted));border-radius:999px;padding:1px 11px;font-size:13px;font-weight:700}
+.tag.solid{background:var(--c);color:#141414}
+.result{font-size:44px;font-weight:800;color:var(--c)}
+.seat{position:absolute;transform:translate(-50%,-50%);width:120px;text-align:center;line-height:1.3}
+.avatar{width:56px;height:56px;margin:0 auto 6px;border-radius:50%;display:grid;place-items:center;position:relative;border:3px solid var(--c,#8b93a8);background:rgba(10,12,24,.85);font-size:23px;font-weight:700}
+.seat.active .avatar{transform:scale(1.2);border-color:var(--ink);box-shadow:0 0 0 4px color-mix(in srgb,var(--c,#8b93a8) 45%,transparent),0 0 34px 8px color-mix(in srgb,var(--c,#8b93a8) 60%,transparent)}
+.seat.dead .avatar{border-color:var(--faint);color:var(--faint);background:rgba(36,37,46,.9)}
+.seat.dead .avatar::after{content:"";position:absolute;width:62%;height:3px;background:#9a4044;transform:rotate(-45deg);border-radius:2px}
+.seat-name{font-size:13px;color:var(--muted)}
+.role{font-size:13px;font-weight:700;color:var(--c,var(--muted))}
+.seat.dead .role{color:var(--faint)}
+.model{font-size:11px;color:var(--muted)}
+.race{position:absolute;left:-22px;top:-8px;padding:0 6px;border-radius:999px;background:#141414;border:2px solid var(--gold);color:var(--gold);font-size:11px;font-weight:800;line-height:18px}
+.badge{position:absolute;right:-8px;top:-8px;width:24px;height:24px;border-radius:50%;background:var(--gold);color:#141414;font-size:12px;font-weight:800;display:grid;place-items:center;border:2px solid #141414}
+.caption{position:relative;background:var(--card);border-radius:16px;padding:12px 24px 14px 30px;height:150px;overflow:auto}
+.caption::before{content:"";position:absolute;left:0;top:0;bottom:0;width:6px;background:var(--accent);border-radius:16px 0 0 16px}
+.caption-meta{display:flex;gap:12px;align-items:baseline;font-size:14px;color:var(--muted);margin-bottom:6px}
+#captionSpeaker{color:var(--accent);font-weight:700;font-size:16px}
+#subtitle{font-size:21px;line-height:1.65;margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
+.caption[data-speaker=narrator] #subtitle{color:#d6d9e4}
+.controls{display:grid;grid-template-columns:auto 1fr auto auto;gap:14px;align-items:center}
+.transport{display:flex;gap:6px}
+#play{min-width:76px;background:var(--ink);color:#141414;font-weight:700;border:0}
+#progress{width:100%;accent-color:var(--gold);cursor:pointer}
+#time{font:13px ui-monospace,monospace;color:var(--muted)}
+.notice{font-size:12px;color:var(--faint);text-align:center}#error{color:#ffb4a0}
+@media(max-width:760px){
+ .app{height:auto;padding:12px 16px;grid-template-rows:auto 440px auto auto auto}
+ header{grid-template-columns:1fr;justify-items:start}.right{justify-content:flex-start}
+ .seat{width:70px}.avatar{width:38px;height:38px;font-size:16px;border-width:2px}.seat-name{display:none}.role{font-size:11px}.model{font-size:9px}
+ .felt{inset:12% 8%}.center{width:52%}#speaker{font-size:26px}.result{font-size:28px}
+ .caption{height:auto;max-height:260px;padding-left:22px}#subtitle{font-size:17px}
+ .controls{grid-template-columns:auto 1fr auto}#progress{grid-column:1/-1;grid-row:1}
+}
+</style>
+</head>
+<body data-time="night">
+<main class="app">
+<header>
+ <div class="brand">AI 狼人杀<span class="edition" id="edition"></span></div>
+ <h1 id="phase"></h1>
+ <div class="right"><div class="camps" id="camps" aria-label="各阵营存活人数"></div>
+  <div class="views" role="group" aria-label="回放视角"><button id="playerView" aria-pressed="true">玩家视角</button><button id="godView" aria-pressed="false">上帝视角</button></div></div>
+</header>
+<section id="table" aria-label="十二座圆桌"><div class="felt"></div>
+ <div class="center"><div id="perspective"></div><div id="speaker"></div><div id="summary"></div></div><div id="seats"></div></section>
+<section class="caption" aria-label="当前字幕"><div class="caption-meta"><span id="captionSpeaker"></span><span id="channel"></span></div><p id="subtitle"></p></section>
+<div class="controls"><div class="transport"><button id="previous" aria-label="上一句">‹</button><button id="play">播放</button><button id="next" aria-label="下一句">›</button></div>
+ <input id="progress" aria-label="当前视角播放进度" type="range" min="0" step="0.001" value="0"><span id="time"></span>
+ <select id="speed" aria-label="播放速度"><option value="1">1×</option><option value="1.5">1.5×</option><option value="2">2×</option></select></div>
+<div class="notice">玩家视角只播放公开内容，身份在终局揭晓 <span id="error" role="alert"></span></div>
+</main>
+<audio id="audio" preload="none"></audio>
+<script>
+'use strict';
+const DATA=__REPLAY_DATA__;
+const $=id=>document.getElementById(id);
+const all=DATA.entries, publicEntries=all.filter(e=>e.channel==='public');
+const audio=$('audio');
+let mode='player', position=0, current=null;
+const CAMP={'狼人':'var(--wolf)','村民':'var(--villager)','预言家':'var(--god)','女巫':'var(--god)','猎人':'var(--god)','守卫':'var(--god)'};
+const nodes=new Map();
+for(const [i,p] of DATA.players.entries()){
+ const angle=(i*30-90)*Math.PI/180, seat=document.createElement('div');seat.className='seat';seat.dataset.player=p.id;
+ seat.style.left=`${50+40*Math.cos(angle)}%`;seat.style.top=`${50+37*Math.sin(angle)}%`;
+ const avatar=document.createElement('div');avatar.className='avatar';avatar.textContent=p.number;
+ const label=document.createElement('div');label.className='seat-name';
+ const role=document.createElement('div');role.className='role';
+ const model=document.createElement('div');model.className='model';
+ seat.append(avatar,label,role,model);$('seats').append(seat);nodes.set(p.id,{seat,avatar,label,role,model});
+}
+$('edition').textContent=DATA.game_id.toUpperCase()+' · 12人预女猎守';
+function list(){return mode==='god'?all:publicEntries}
+function start(e){return mode==='god'?e.start:e.public_start}
+function end(e){return mode==='god'?e.end:e.public_end}
+function duration(){return mode==='god'?DATA.duration:DATA.public_duration}
+function entryAt(t){return list().find(e=>start(e)<=t+1e-7 && t<end(e)-1e-7)||list().at(-1)}
+function clock(t){return `${Math.floor(t/60).toString().padStart(2,'0')}:${Math.floor(t%60).toString().padStart(2,'0')}`}
+function sourceTime(){const e=entryAt(position);return e.start+Math.min(position-start(e),e.end-e.start)}
+function channelOf(e){return e.channel==='public'?['公开','#8b93a8']:e.channel==='wolves'?['狼队夜聊','var(--wolf)']:[`${Number(e.channel.split(':p')[1])}号私聊`,'var(--private)']}
+function tag(text,color,solid){const t=document.createElement('span');t.className='tag'+(solid?' solid':'');t.style.setProperty('--c',color);t.textContent=text;return t}
+function render(){
+ const e=entryAt(position), reveal=mode==='god'||Boolean(e.state.winner);
+ if(current!==e||$('perspective').dataset.mode!==mode){
+  current=e;$('perspective').dataset.mode=mode;
+  document.body.dataset.time=e.phase_label.includes('夜')&&!e.state.winner?'night':'day';
+  $('perspective').textContent=mode==='god'?'上帝视角 · 完整记录':'玩家视角 · 公开记录';
+  $('phase').textContent=e.phase_label;
+  const player=DATA.players.find(p=>p.id===e.speaker);
+  const name=player?e.speaker_name:e.speaker==='god'?'主持人':'旁白';
+  const color=player?(reveal?CAMP[player.role]:'#8b93a8'):e.speaker==='god'?'var(--gold)':'var(--muted)';
+  const [channel,channelColor]=channelOf(e);
+  $('summary').replaceChildren();
+  if(e.state.winner){
+   const good=e.state.winner==='good';
+   $('speaker').textContent='游戏结束';$('speaker').style.fontSize='18px';
+   const r=document.createElement('div');r.className='result';r.style.setProperty('--c',good?'var(--villager)':'var(--wolf)');r.textContent=good?'好人阵营获胜':'狼人阵营获胜';
+   $('summary').append(r);
+  }else{
+   $('speaker').textContent=name;$('speaker').style.fontSize='';
+   if(e.speaker!=='narrator')$('summary').append(tag(player?(reveal?player.role:'身份未公开'):'上帝',color));
+   $('summary').append(tag(channel,channelColor,e.channel!=='public'));
+  }
+  $('captionSpeaker').textContent=name;$('subtitle').textContent=e.text;
+  $('channel').textContent=channel;
+  document.querySelector('.caption').dataset.speaker=e.speaker;
+  document.querySelector('.caption').style.setProperty('--accent',e.channel==='public'?color:channelColor);
+  const alive=DATA.players.filter(p=>e.state.alive.includes(p.id));
+  $('camps').replaceChildren(...(reveal?[['狼',alive.filter(p=>p.role==='狼人').length,'var(--wolf)'],['神',alive.filter(p=>p.role!=='狼人'&&p.role!=='村民').length,'var(--god)'],['民',alive.filter(p=>p.role==='村民').length,'var(--villager)']]:[['存活',alive.length,'var(--muted)']])
+   .map(([k,n,c])=>{const s=document.createElement('span');s.className='camp';s.style.color=c;s.textContent=`${k} ${n}`;return s}));
+  for(const p of DATA.players){
+   const n=nodes.get(p.id), dead=!e.state.alive.includes(p.id);
+   n.seat.classList.toggle('active',e.speaker===p.id);n.seat.classList.toggle('dead',dead);
+   n.seat.style.setProperty('--c',reveal?CAMP[p.role]:'#8b93a8');
+   n.label.textContent=p.number+' 号'+(dead?' · 出局':'');n.role.textContent=reveal?p.role:'身份未公开';
+   n.model.textContent=e.state.winner?p.model_label:'';
+   n.avatar.querySelector('.badge')?.remove();n.avatar.querySelector('.race')?.remove();
+   if(e.state.candidates?.includes(p.id)){const race=document.createElement('span');race.className='race';race.textContent='警上';race.title='参与警长竞选';n.avatar.append(race)}
+   if(e.state.sheriff===p.id){const badge=document.createElement('span');badge.className='badge';badge.textContent='警';badge.title='警长';n.avatar.append(badge)}
+  }
+ }
+ // Long speeches scroll along with the audio so the part being read stays in view.
+ const caption=document.querySelector('.caption'), spoken=(position-start(e))/Math.max(.001,(e.voice_end??e.end)-e.start);
+ caption.scrollTop=Math.max(0,Math.min(1,spoken))*(caption.scrollHeight-caption.clientHeight);
+ $('progress').max=duration();$('progress').value=position;
+ $('time').textContent=`${clock(position)} / ${clock(duration())}`;
+ $('playerView').setAttribute('aria-pressed',String(mode==='player'));
+ $('godView').setAttribute('aria-pressed',String(mode==='god'));
+ $('previous').disabled=list().indexOf(e)===0;$('next').disabled=list().indexOf(e)===list().length-1;
+ $('play').textContent=audio.paused?'播放':'暂停';
+}
+function seek(t){position=Math.max(0,Math.min(t,duration()));audio.currentTime=position;render()}
+function setMode(next, source=sourceTime()){
+ const playing=!audio.paused;audio.pause();
+ mode=next;const e=list().find(e=>e.end>source+1e-7)||list().at(-1);
+ position=start(e)+Math.max(0,Math.min(source-e.start,e.end-e.start));
+ audio.src=mode==='god'?'../audio/full.mp3':'public.mp3';audio.currentTime=position;
+ audio.playbackRate=Number($('speed').value);render();
+ if(playing)play();
+}
+async function play(){try{await audio.play();$('error').textContent='';render()}catch(e){$('error').textContent='音频播放失败，请确认音轨文件可访问。';render()}}
+$('playerView').onclick=()=>{if(mode!=='player')setMode('player')};$('godView').onclick=()=>{if(mode!=='god')setMode('god')};
+$('play').onclick=()=>{if(audio.paused){if(position>=duration())seek(0);play()}else{audio.pause();render()}};
+$('progress').oninput=()=>seek(Number($('progress').value));
+$('previous').onclick=()=>seek(start(list()[Math.max(0,list().indexOf(current)-1)]));
+$('next').onclick=()=>seek(start(list()[Math.min(list().length-1,list().indexOf(current)+1)]));
+$('speed').onchange=()=>{audio.playbackRate=Number($('speed').value)};
+document.addEventListener('keydown',ev=>{if(ev.target.tagName==='INPUT'&&ev.target.type!=='range')return;
+ if(ev.key===' '){ev.preventDefault();$('play').click()}else if(ev.key==='ArrowLeft'){$('previous').click()}else if(ev.key==='ArrowRight'){$('next').click()}});
+audio.addEventListener('play',render);
+audio.addEventListener('pause',render);
+audio.addEventListener('timeupdate',()=>{if(!audio.paused){position=Math.min(audio.currentTime,duration());render()}});
+audio.addEventListener('ended',()=>{position=duration();render()});
+audio.addEventListener('error',()=>{$('error').textContent='音轨不可用；仍可拖动进度阅读回放。'});
+function tick(){if(!audio.paused){position=Math.min(audio.currentTime,duration());render()}requestAnimationFrame(tick)}
+window.replay={seekSource(t,view=mode){audio.pause();if(view!==mode)setMode(view,t);else{const e=list().find(e=>e.end>t+1e-7)||list().at(-1);seek(start(e)+Math.max(0,Math.min(t-e.start,e.end-e.start)))}return current.id},
+ inspect(){return {id:current.id,mode,position,sourceTime:sourceTime(),duration:duration(),channel:current.channel,phase:$('phase').textContent,subtitle:$('subtitle').textContent,speaker:current.speaker,
+ active:[...document.querySelectorAll('.seat.active')].map(n=>n.dataset.player),dead:[...document.querySelectorAll('.seat.dead')].map(n=>n.dataset.player),
+ sheriff:[...document.querySelectorAll('.badge')].map(n=>n.closest('.seat').dataset.player),candidates:[...document.querySelectorAll('.race')].map(n=>n.closest('.seat').dataset.player),roles:[...nodes.values()].map(n=>n.role.textContent),models:[...nodes.values()].map(n=>n.model.textContent),audio:audio.getAttribute('src'),
+ subtitleFits:(c=>c.scrollHeight<=c.clientHeight||getComputedStyle(c).overflowY==='auto')(document.querySelector('.caption')),bodyText:document.body.innerText}}};
+setMode('player',0);requestAnimationFrame(tick);
+</script>
+</body></html>

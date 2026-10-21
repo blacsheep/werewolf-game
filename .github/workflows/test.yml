@@ -1,0 +1,23 @@
+name: test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@v6
+      - run: sudo apt-get update && sudo apt-get install -y ffmpeg fonts-noto-cjk
+      - name: engine
+        run: python3 -m unittest discover -s engine/tests
+      - name: tts
+        run: uv run --no-project --with numpy python3 -m unittest discover -s tools/tts/tests
+      - name: replay (skips without a finished game)
+        working-directory: tools/replay
+        run: uv run --no-project --with pillow python -m unittest test_replay
