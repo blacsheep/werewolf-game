@@ -13,6 +13,8 @@ import stat
 import sys
 
 SEATS = tuple(f'p{i:02}' for i in range(1, 13))
+# The lead's instance only opens games; it never plays or hosts.
+ACTORS = ('lead', 'god', *SEATS)
 ROLES = ['wolf'] * 4 + ['villager'] * 4 + ['seer', 'witch', 'hunter', 'guard']
 SPEECH_PHASES = {'sheriff_speech', 'sheriff_pk_speech', 'day_speech', 'exile_pk_speech'}
 ROLE_ADVICE = {
@@ -582,7 +584,13 @@ def seat_list(seats):
 
 TARGET = {'type': ['string', 'null'], 'enum': [*SEATS, None]}
 TEXT = {'type': 'string', 'minLength': 1, 'maxLength': 20000}
+MODEL = {'type': 'string', 'minLength': 1, 'maxLength': 200}
 TOOLS = {
+    'new_game': ('lead', '开一局新对局：取 games/ 下最小的未用编号 gNNN，建目录、写 seats.json（每个座位的模型和成员 ID <局>-god、<局>-p01…），'
+                         '并把 games/current 指向它。当前对局未完局时拒绝，除非用户已同意放弃它（abandon_current）。',
+                 {'models': {'type': 'object', 'properties': {seat: MODEL for seat in ('god', *SEATS)},
+                             'required': ['god', *SEATS], 'additionalProperties': False},
+                  'abandon_current': {'type': 'boolean'}}),
     'my_info': ('both', '读取公开历史和自己的私有信息；上帝可见角色表。', {}),
     'start_game': ('god', '以记录的整数种子初始化当前空对局。', {'seed': {'type': 'integer'}}),
     'next_step': ('god', '当前阶段的点名、会话映射、开放操作；票齐后提供票型。', {}),
@@ -613,22 +621,39 @@ def validate_args(name, args):
     require(name in TOOLS, '未知工具')
     props = TOOLS[name][2]
     require(isinstance(args, dict) and set(args) == set(props), '参数必须严格匹配工具定义；不接受身份覆盖参数')
-    types = {'string': str, 'integer': int, 'boolean': bool, 'null': type(None)}
     for key, schema in props.items():
-        value = args[key]
-        allowed = schema['type'] if isinstance(schema['type'], list) else [schema['type']]
-        require(any(type(value) is types[t] for t in allowed), '参数类型错误')
-        require('enum' not in schema or value in schema['enum'], '参数值不在允许范围')
-        if isinstance(value, str):
-            require(schema.get('minLength', 0) <= len(value) <= schema.get('maxLength', 20000), '文本长度不合法')
+        check_value(args[key], schema)
+
+
+def check_value(value, schema):
+    types = {'string': str, 'integer': int, 'boolean': bool, 'null': type(None), 'object': dict}
+    kinds = schema['type'] if isinstance(schema['type'], list) else [schema['type']]
+    require(any(type(value) is types[t] for t in kinds), '参数类型错误')
+    require('enum' not in schema or value in schema['enum'], '参数值不在允许范围')
+    if isinstance(value, str):
+        require(schema.get('minLength', 0) <= len(value) <= schema.get('maxLength', 20000), '文本长度不合法')
+    if isinstance(value, dict):
+        require(set(value) == set(schema['properties']), '对象的字段必须与工具定义一致')
+        for key, inner in schema['properties'].items():
+            check_value(value[key], inner)
+
+
+def audience(actor):
+    return actor if actor in ('lead', 'god') else 'player'
 
 
 def tool_list(actor):
     return [{'name': name, 'description': description,
              'inputSchema': {'type': 'object', 'properties': props,
                              'required': list(props), 'additionalProperties': False}}
-            for name, (audience, description, props) in TOOLS.items()
-            if audience == 'both' or audience == ('god' if actor == 'god' else 'player')]
+            for name, (audience_of_tool, description, props) in TOOLS.items()
+            if allowed(audience_of_tool, actor)]
+
+
+def allowed(tool_audience, actor):
+    if tool_audience == 'both':
+        return actor != 'lead'
+    return tool_audience == audience(actor)
 
 
 class Store:
@@ -636,7 +661,7 @@ class Store:
         self.root = Path(root).resolve()
 
     @contextlib.contextmanager
-    def locked(self):
+    def root_locked(self):
         """One lock for all seats and current-link switches. Lock file is not state."""
         try:
             root_fd = os.open(self.root, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
@@ -645,20 +670,69 @@ class Store:
                 try:
                     require(stat.S_ISREG(os.fstat(lock_fd).st_mode) and os.fstat(lock_fd).st_nlink == 1, '锁文件不安全')
                     fcntl.flock(lock_fd, fcntl.LOCK_EX)
-                    game_id = os.readlink('current', dir_fd=root_fd)
-                    require(re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.-]*', game_id) is not None and game_id != 'current',
-                            'current 必须是指向 games 直接子目录的相对符号链接')
-                    directory_fd = os.open(game_id, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=root_fd)
-                    try:
-                        yield root_fd, directory_fd, game_id
-                    finally:
-                        os.close(directory_fd)
+                    yield root_fd
                 finally:
                     os.close(lock_fd)
             finally:
                 os.close(root_fd)
         except OSError as exc:
             raise RuleError('对局存储不可用：检查 current 符号链接、目录、权限与日志') from exc
+
+    @contextlib.contextmanager
+    def locked(self):
+        with self.root_locked() as root_fd:
+            try:
+                game_id = os.readlink('current', dir_fd=root_fd)
+                require(re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.-]*', game_id) is not None and game_id != 'current',
+                        'current 必须是指向 games 直接子目录的相对符号链接')
+                directory_fd = os.open(game_id, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=root_fd)
+            except OSError as exc:
+                raise RuleError('对局存储不可用：检查 current 符号链接、目录、权限与日志') from exc
+            try:
+                yield root_fd, directory_fd, game_id
+            finally:
+                os.close(directory_fd)
+
+    def new_game(self, models, abandon_current):
+        """Open the next game: games/gNNN with its seats.json, and current pointing at it."""
+        with self.root_locked() as root_fd:
+            try:
+                previous = os.readlink('current', dir_fd=root_fd)
+            except FileNotFoundError:
+                previous = None
+            except OSError as exc:
+                raise RuleError('games/current 不是符号链接，请用户检查 games 目录') from exc
+            if previous is not None and not abandon_current:
+                try:
+                    directory_fd = os.open(previous, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=root_fd)
+                except OSError:
+                    directory_fd = None
+                if directory_fd is not None:
+                    try:
+                        game, _, _ = self.load(directory_fd)
+                    finally:
+                        os.close(directory_fd)
+                    require(not game.started or game.winner,
+                            f'当前对局 {previous} 还没结束；用户同意放弃它之后再传 abandon_current=true')
+            used = {int(m.group(1)) for name in os.listdir(root_fd)
+                    if (m := re.fullmatch(r'g(\d{3,})', name))}
+            number = next(n for n in range(1, len(used) + 2) if n not in used)
+            game_id = f'g{number:03}'
+            os.mkdir(game_id, 0o700, dir_fd=root_fd)
+            seats = {seat: {'model': models[seat], 'principal': f'{game_id}-{seat}'} for seat in ('god', *SEATS)}
+            directory_fd = os.open(game_id, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=root_fd)
+            try:
+                fd = os.open('seats.json', os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o644, dir_fd=directory_fd)
+                with os.fdopen(fd, 'w', encoding='utf-8') as stream:
+                    stream.write(json.dumps({'seats': seats}, ensure_ascii=False, indent=2) + '\n')
+            finally:
+                os.close(directory_fd)
+            # Switch atomically: a new link beside the old one, renamed over it.
+            with contextlib.suppress(FileNotFoundError):
+                os.unlink('current.new', dir_fd=root_fd)
+            os.symlink(game_id, 'current.new', dir_fd=root_fd)
+            os.replace('current.new', 'current', src_dir_fd=root_fd, dst_dir_fd=root_fd)
+            return {'game_id': game_id, 'directory': str(self.root / game_id), 'previous': previous, 'seats': seats}
 
     def load(self, directory_fd):
         game = Game()
@@ -729,9 +803,10 @@ class Store:
 
     def call(self, actor, name, args, conversations=None):
         validate_args(name, args)
-        audience = TOOLS[name][0]
-        require(actor in ('god', *SEATS), '身份无效')
-        require(audience == 'both' or audience == ('god' if actor == 'god' else 'player'))
+        require(actor in ACTORS, '身份无效')
+        require(allowed(TOOLS[name][0], actor))
+        if name == 'new_game':
+            return self.new_game(args['models'], args['abandon_current'])
         with self.locked() as (root_fd, directory_fd, game_id):
             game, events, raw = self.load(directory_fd)
             if name == 'my_info':
@@ -791,7 +866,7 @@ class Store:
 class Server:
     def __init__(self):
         self.actor = os.environ.get('WW_SEAT')
-        require(self.actor in ('god', *SEATS), 'WW_SEAT 必须为 god 或 p01…p12，且不可缺失')
+        require(self.actor in ACTORS, 'WW_SEAT 必须为 lead、god 或 p01…p12，且不可缺失')
         self.store = Store(os.environ.get('WW_GAMES_DIR', Path(__file__).resolve().parent.parent / 'games'))
         self.conversations = json.loads(os.environ.get('WW_CONVERSATIONS', '{}'))
         require(isinstance(self.conversations, dict), 'WW_CONVERSATIONS 必须为 JSON 对象')
@@ -807,7 +882,7 @@ class Server:
             version = params.get('protocolVersion', '2024-11-05')
             return {'protocolVersion': version if version in ('2024-11-05', '2025-03-26', '2025-06-18', '2025-11-25') else '2024-11-05',
                     'capabilities': {'tools': {'listChanged': False}},
-                    'serverInfo': {'name': 'werewolf-engine', 'version': '1.1.0'}}
+                    'serverInfo': {'name': 'werewolf-engine', 'version': '1.2.0'}}
         if method == 'ping':
             return {}
         if method == 'tools/list':

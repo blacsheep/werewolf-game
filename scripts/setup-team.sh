@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # One-time setup: scripts/setup-team.sh <model>
 #
-# <model> is an agt model resource (see scripts/setup-models.sh); the lead and the
-# runner run on it, and the lead offers it as the default for the God and the
-# players. This writes everything machine-specific into .agt (gitignored):
-# workspace settings, the engine's MCP servers, the prompts and skills, the lead
-# and the runner. Safe to re-run. The God and the players are created by the lead.
+# <model> is an agt model resource (see scripts/setup-models.sh); the lead, voice
+# and replay agents run on it, and the lead offers it as the default for the God
+# and the players. This writes everything machine-specific into .agt (gitignored):
+# workspace settings, the engine's MCP servers, the prompts and skills, and the
+# three agents. Safe to re-run. The God and the players are created by the lead.
 set -euo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
 export AGT_HOME="$root/.agt"
@@ -22,16 +22,16 @@ config["scheduler"].update(concurrency=4, discussion_seconds=None, replies_per_a
 # A dedicated home whose only MCP tools are our own engine: approvals would stall a
 # game of several hundred tool calls, so everything runs without asking.
 config["permissions"].update(mode="auto_allow", harness_mode="auto_allow", reviewer_model=f"default/{model}", request_timeout_seconds=3600)
-# The runner runs the project's commands on this machine; voicing a game takes tens
-# of minutes, well past the default 300-second limit.
+# Voice and replay run the project's tools on this machine; voicing a game takes
+# tens of minutes, well past the default 300-second limit.
 config["execution"].update(enabled=True, timeout_seconds=7200)
 json.dump(config, open(path, "w"), indent=2)
 EOF
 agt config apply "$root/.agt/config.yaml.new" >/dev/null && rm "$root/.agt/config.yaml.new"
 
-# One engine MCP server per seat. The lead later sets the God's WW_CONVERSATIONS,
-# so an existing server is left alone.
-for seat in god p01 p02 p03 p04 p05 p06 p07 p08 p09 p10 p11 p12; do
+# One engine MCP server per seat, plus the lead's, which only opens new games. The
+# lead later sets the God's WW_CONVERSATIONS, so an existing server is left alone.
+for seat in lead god p01 p02 p03 p04 p05 p06 p07 p08 p09 p10 p11 p12; do
   name="ww-$seat"
   exists mcp "$name" && continue
   cat > "$root/.agt/$name.json" <<EOF
@@ -45,7 +45,7 @@ done
 
 # Prompts and skills live in prompts/ and docs/skills/; {{root}} becomes this checkout.
 render() { sed "s|{{root}}|$root|g" "$1" > "$root/.agt/rendered.md"; }
-for prompt in ww-god ww-player runner; do
+for prompt in ww-god ww-player voice replay; do
   render "$root/prompts/$prompt.md"
   if exists prompt "$prompt"; then
     agt prompt update "$prompt" --file "$root/.agt/rendered.md" --yes >/dev/null
@@ -61,23 +61,29 @@ for skill in ww-playbook werewolf-game; do
 done
 rm "$root/.agt/rendered.md"
 
-# The lead runs a whole game from one request through the werewolf-game skill.
+# The lead runs a whole game from one request through the werewolf-game skill, and
+# opens each game through its engine server, so it needs no shell.
 exists agent lead || agt agent create lead --model "$model" --prompt default/lead \
   --builtin-tool resource_management --builtin-tool task_collaboration \
   --description "Builds and runs the werewolf team" >/dev/null
-agt agent info lead --output json | grep -q '"werewolf-game"' || agt agent update lead --add-skill werewolf-game >/dev/null
-# The runner is the only agent that can run shell commands: the lead hands it the
-# game directory setup, the voicing and the replay as tasks.
-exists agent runner || agt agent create runner --model "$model" --prompt runner \
-  --builtin-tool local_execution --description "Runs the project's commands for the lead" >/dev/null
+lead="$(agt agent info lead --output json)"
+grep -q '"werewolf-game"' <<<"$lead" || agt agent update lead --add-skill werewolf-game >/dev/null
+grep -q '"ww-lead"' <<<"$lead" || agt agent update lead --add-mcp ww-lead >/dev/null
+# Voice and replay are the only agents that run shell commands: the lead hands
+# them a finished game's voicing and then its replay as tasks.
+exists agent voice || agt agent create voice --model "$model" --prompt voice \
+  --builtin-tool local_execution --description "Voices a finished game with tools/tts" >/dev/null
+exists agent replay || agt agent create replay --model "$model" --prompt replay \
+  --builtin-tool local_execution --description "Builds a voiced game's replay and video with tools/replay" >/dev/null
 agt im principal info web-operator >/dev/null 2>&1 || agt im principal create web-operator --name "我" >/dev/null
 agt im owner ensure web-operator >/dev/null
-agt im principal info lead >/dev/null 2>&1 || {
-  agt tool call --principal web-operator --manager principal_create --args '{"id":"lead","name":"Lead","kind":"agent"}' >/dev/null
-  agt tool call --principal web-operator --manager agent_bind --args '{"principal":"lead","agent":"lead"}' >/dev/null
+member() {
+  local id="$1" name="$2"
+  agt im principal info "$id" >/dev/null 2>&1 && return 0
+  agt tool call --principal web-operator --manager principal_create --args "{\"id\":\"$id\",\"name\":\"$name\",\"kind\":\"agent\"}" >/dev/null
+  agt tool call --principal web-operator --manager agent_bind --args "{\"principal\":\"$id\",\"agent\":\"$id\",\"working_directory\":\"$root\"}" >/dev/null
 }
-agt im principal info runner >/dev/null 2>&1 || {
-  agt tool call --principal web-operator --manager principal_create --args '{"id":"runner","name":"Runner","kind":"agent"}' >/dev/null
-  agt tool call --principal web-operator --manager agent_bind --args "{\"principal\":\"runner\",\"agent\":\"runner\",\"working_directory\":\"$root\"}" >/dev/null
-}
-echo "ready: lead and runner on $model with skill werewolf-game; engine MCP servers, prompts and skills installed"
+member lead Lead
+member voice 配音
+member replay 回放
+echo "ready: lead, voice and replay on $model with skill werewolf-game; engine MCP servers, prompts and skills installed"

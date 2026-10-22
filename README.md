@@ -25,12 +25,12 @@
 ```text
 你 ──「开一局狼人杀」──▶ lead（skill: werewolf-game，用 goal 跟踪到完成）
                           │
-                          ├─ runner：建对局目录 games/gNNN 和座位表 seats.json
+                          ├─ new_game（引擎 MCP ww-lead）：建对局目录 games/gNNN 和座位表 seats.json
                           ├─ 创建上帝和 12 名玩家，建公共群，开局
                           │     上帝 ⇄ 引擎 MCP ww-god
                           │     玩家 ⇄ 各自的 MCP ww-pXX
-                          ├─ runner：tools/tts → transcript.json、audio/full.mp3、timeline.json
-                          └─ runner：tools/replay → replay/index.html、replay/god.mp4
+                          ├─ voice：tools/tts → transcript.json、audio/full.mp3、timeline.json
+                          └─ replay：tools/replay → replay/index.html、replay/god.mp4
 ```
 
 一局对话部分大约要两个小时（实测：13 个座位都用同一个推理模型），配音和出视频再要几十分钟。
@@ -41,7 +41,7 @@
 
 | 依赖 | 用来做什么 |
 | --- | --- |
-| [agt](https://github.com/blacsheep/agt) ≥ 0.6.1 | 运行所有 agent：lead、上帝、12 名玩家和 runner，以及群聊、任务和 Web 控制台 |
+| [agt](https://github.com/blacsheep/agt) ≥ 0.6.1 | 运行所有 agent：lead、上帝、12 名玩家、配音和回放，以及群聊、任务和 Web 控制台 |
 | Python 3.10+ | 运行规则引擎（只用标准库）和 setup 脚本 |
 | [uv](https://docs.astral.sh/uv/) | 运行配音和回放工具，按需拉取它们用的 edge-tts、numpy、Pillow，不装进系统 Python |
 | ffmpeg | 把每句配音拼成整局音频，把回放画面编码成 mp4 |
@@ -101,7 +101,7 @@ export AGT_HOME="$PWD/.agt"          # 或者用 direnv 加载 .envrc
 
 cp models.env.example models.env     # 填一个或多个厂商的地址、key 和模型名
 scripts/setup-models.sh              # 每个填好的厂商生成一个同名的 agt 模型，比如 claude
-scripts/setup-team.sh claude         # lead 和 runner 用这个模型，它也是上帝和玩家的默认模型
+scripts/setup-team.sh claude         # lead、配音和回放用这个模型，它也是上帝和玩家的默认模型
 scripts/console.sh &                 # 启动 Web 控制台，地址写在 recording/console.log
 ```
 
@@ -144,7 +144,7 @@ uv run --with pillow python tools/replay/build.py --game games/g001
 
 ```text
 engine/              规则引擎：一个 MCP 服务器，每个座位一个锁定实例
-prompts/             上帝、玩家和 runner 的提示词
+prompts/             上帝、玩家、配音和回放的提示词
 docs/rules.md        板子和规则，引擎和所有 agent 都以它为准
 docs/playbook.md     玩家打法资料
 docs/skills/         lead 用的 werewolf-game，玩家用的 ww-playbook

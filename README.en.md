@@ -25,12 +25,12 @@ You tell the lead agent "开一局狼人杀" ("start a game of werewolf") and an
 ```text
 you ── "开一局狼人杀" ──▶ lead (skill werewolf-game, tracked by a goal until done)
                           │
-                          ├─ runner: game directory games/gNNN and seats.json
+                          ├─ new_game (engine MCP ww-lead): game directory games/gNNN and seats.json
                           ├─ creates the God and 12 players, opens the public group, starts the game
                           │     God     ⇄ engine MCP ww-god
                           │     players ⇄ their own MCP ww-pXX
-                          ├─ runner: tools/tts → transcript.json, audio/full.mp3, timeline.json
-                          └─ runner: tools/replay → replay/index.html, replay/god.mp4
+                          ├─ voice: tools/tts → transcript.json, audio/full.mp3, timeline.json
+                          └─ replay: tools/replay → replay/index.html, replay/god.mp4
 ```
 
 The game itself takes about two hours (measured with one reasoning model on all 13 seats); voicing and rendering take a few tens of minutes more.
@@ -41,7 +41,7 @@ Linux and macOS are supported. Every agent runs on the models you configure in a
 
 | Requirement | What it is for |
 | --- | --- |
-| [agt](https://github.com/blacsheep/agt) ≥ 0.6.1 | Runs every agent (the lead, the God, the 12 players and the runner) along with the chats, tasks and web console |
+| [agt](https://github.com/blacsheep/agt) ≥ 0.6.1 | Runs every agent (the lead, the God, the 12 players, voice and replay) along with the chats, tasks and web console |
 | Python 3.10+ | Runs the rules engine (standard library only) and the setup scripts |
 | [uv](https://docs.astral.sh/uv/) | Runs the voice and replay tools, fetching their edge-tts, numpy and Pillow on demand instead of installing them into the system Python |
 | ffmpeg | Joins the voiced lines into the full game's audio and encodes the replay mp4 |
@@ -101,7 +101,7 @@ export AGT_HOME="$PWD/.agt"          # or let direnv load .envrc
 
 cp models.env.example models.env     # fill in the URL, key and model of one or more vendors
 scripts/setup-models.sh              # one agt model per filled-in vendor, named after it, e.g. claude
-scripts/setup-team.sh claude         # the lead and the runner run on this model; it is also the default for the God and players
+scripts/setup-team.sh claude         # the lead, voice and replay run on this model; it is also the default for the God and players
 scripts/console.sh &                 # start the web console; its link is written to recording/console.log
 ```
 
@@ -144,7 +144,7 @@ See [engine/README.md](engine/README.md), [tools/tts/README.md](tools/tts/README
 
 ```text
 engine/              rules engine: one MCP server, one locked instance per seat
-prompts/             prompts for the God, the players and the runner
+prompts/             prompts for the God, the players, voice and replay
 docs/rules.md        the setup and rules every agent and the engine follow
 docs/playbook.md     strategy notes for players
 docs/skills/         werewolf-game for the lead, ww-playbook for the players

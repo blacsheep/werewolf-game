@@ -1,19 +1,18 @@
 # 规则引擎
 
-`server.py` 是单文件、仅 Python 标准库的 MCP stdio 服务器。支持 Python 3.10+、POSIX 本地文件系统（使用 `fcntl.flock`、`O_NOFOLLOW` 和目录 fd）；本机验证环境为 Python 3.12.3。规则依据为 `../docs/rules.md`。13 个 AGT MCP 资源（`ww-god`、`ww-p01` … `ww-p12`）由 `scripts/setup-team.sh` 按本机路径生成。
+`server.py` 是单文件、仅 Python 标准库的 MCP stdio 服务器。支持 Python 3.10+、POSIX 本地文件系统（使用 `fcntl.flock`、`O_NOFOLLOW` 和目录 fd）；本机验证环境为 Python 3.12.3。规则依据为 `../docs/rules.md`。14 个 AGT MCP 资源（`ww-lead`、`ww-god`、`ww-p01` … `ww-p12`）由 `scripts/setup-team.sh` 按本机路径生成。
 
 ## 启动与当前局
 
-先由运维建立当局目录和 `games/current` 相对符号链接。以下只用于第一次建立不存在的当局：
+每局由 lead 实例（`WW_SEAT=lead`）的 `new_game` 开局：它取 `games/` 下最小的未用编号 `gNNN`，建 0700 目录，写入 `seats.json`（每个座位的模型和成员 ID `<局>-god`、`<局>-p01` …），再把相对符号链接 `games/current` 原子地切到新对局。当前对局已开局但未完局时拒绝，除非传 `abandon_current: true`；旧对局的目录原样保留。lead 实例只有这一个工具，不能读取或改动对局。
+
+手动启动一个实例（在仓库根目录）：
 
 ```bash
-# 在仓库根目录
-mkdir -m 700 games/round-001
-ln -s round-001 games/current
 WW_SEAT=god python3 engine/server.py
 ```
 
-其他进程用同一命令，把 `WW_SEAT` 改为 `p01` 至 `p12`。缺失、空值或其他值会向 stderr 报错并以状态码 2 退出。进程启动时锁定身份，之后不重新读取环境；工具参数没有身份、角色、令牌或代理执行入口。`target` 只是动作对象，不能改变动作提交者。上帝实例不提供玩家工具，直接猜名称调用也会被拒绝。
+其他进程用同一命令，把 `WW_SEAT` 改为 `lead` 或 `p01` 至 `p12`。缺失、空值或其他值会向 stderr 报错并以状态码 2 退出。进程启动时锁定身份，之后不重新读取环境；工具参数没有身份、角色、令牌或代理执行入口。`target` 只是动作对象，不能改变动作提交者。上帝实例不提供玩家工具，直接猜名称调用也会被拒绝。
 
 MCP 采用每行一条 UTF-8 JSON-RPC 2.0 消息；stdout 只输出协议数据。支持 `initialize`、`notifications/initialized`、`ping`、`tools/list`、`tools/call`；不提供读取原始文件的 MCP resource。初始化兼容 2024-11-05、2025-03-26、2025-06-18 协议版本。调用示例（经 MCP 客户端发送）：
 
@@ -28,7 +27,7 @@ MCP 采用每行一条 UTF-8 JSON-RPC 2.0 消息；stdout 只输出协议数据�
 
 | 变量 | 含义 |
 | --- | --- |
-| `WW_SEAT` | 必填，唯一身份源：`god` 或 `p01`…`p12` |
+| `WW_SEAT` | 必填，唯一身份源：`lead`、`god` 或 `p01`…`p12` |
 | `WW_GAMES_DIR` | 可选，默认脚本上级仓库的 `games`；测试用临时目录 |
 | `WW_CONVERSATIONS` | 可选，JSON 对象；部署会话映射，默认 `{}`，不保存游戏状态 |
 
@@ -100,7 +99,7 @@ MCP 采用每行一条 UTF-8 JSON-RPC 2.0 消息；stdout 只输出协议数据�
 
 ## 注册到 AGT
 
-`scripts/setup-team.sh` 为每个座位注册一个 MCP 资源，启动参数相同，只有 `WW_SEAT` 不同（`god`、`p01` … `p12`）：
+`scripts/setup-team.sh` 为 lead 和每个座位注册一个 MCP 资源，启动参数相同，只有 `WW_SEAT` 不同（`lead`、`god`、`p01` … `p12`）：
 
 ```json
 {
@@ -116,7 +115,7 @@ MCP 采用每行一条 UTF-8 JSON-RPC 2.0 消息；stdout 只输出协议数据�
 }
 ```
 
-`WW_CONVERSATIONS` 由 lead 在开局时填上公共群 ID；狼队群由上帝在对局中用 `remember_conversation` 记下。上帝实例没有玩家动作，玩家实例没有 start_game、advance、next_step 和 export_replay。
+`WW_CONVERSATIONS` 由 lead 在开局时填上公共群 ID；狼队群由上帝在对局中用 `remember_conversation` 记下。lead 实例只有 new_game；上帝实例没有玩家动作，玩家实例没有 start_game、advance、next_step 和 export_replay。
 
 ## 契约测试
 
@@ -127,4 +126,4 @@ python3 -m unittest discover -s engine/tests -v
 
 测试使用临时 games 目录，不创建真实对局。覆盖夜间技能、警选/退水/PK、秘密投票、猎人/遗言/警徽、自爆、两种屠边及全狼出局、完整导出重放；隔离测试实际启动全部 13 个不同 WW_SEAT 的 stdio 进程，检验字段及越权拒绝。并发测试启动 12 个玩家进程同时提交 96 条笔记，再并发投票，另起相同座位进程争抢重复投票，验证恰好 12 张有效票、连续事件序号和完整重放。另验证日志损坏、截断、特殊文件/符号链接、不安全权限、写入失败和部分写入后拒绝继续。
 
-服务器版本为 `1.1.0`；旧版本含警选自爆的日志可能与新死亡动作队列不兼容，不能直接用于续局或重放，须保留原版本回放旧局。事件封装格式仍为 v1。
+服务器版本为 `1.2.0`（新增 lead 实例和 new_game）；旧版本含警选自爆的日志可能与新死亡动作队列不兼容，不能直接用于续局或重放，须保留原版本回放旧局。事件封装格式仍为 v1。

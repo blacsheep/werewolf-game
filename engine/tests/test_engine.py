@@ -426,6 +426,8 @@ class Contract(unittest.TestCase):
         self.client('p01').tool('export_replay', error=True)
         with self.assertRaises(RuleError):
             self.call(self.players('wolf')[0], 'wolf_kill', target=None)
+        # A finished game makes way for the next one without asking.
+        self.assertEqual(self.call('lead', 'new_game', models=self.models(), abandon_current=False)['game_id'], 'g001')
 
     def test_wolves_win_by_god_edge(self):
         # Kill seer, witch, guard, then hunter; victory precedes hunter's shot.
@@ -930,12 +932,12 @@ class Contract(unittest.TestCase):
 
     def test_all_tool_schemas(self):
         # The MCP configs that start these servers are written by scripts/setup-team.sh.
-        for actor in ('god', *SEATS):
+        for actor in ('lead', 'god', *SEATS):
             with self.subTest(actor=actor):
                 client = self.client(actor)
                 self.assertIn('protocolVersion', client.rpc('initialize', {'protocolVersion': '2025-06-18'}))
                 definitions = client.rpc('tools/list')['tools']
-                self.assertEqual(len(definitions), 6 if actor == 'god' else 15)
+                self.assertEqual(len(definitions), {'lead': 1, 'god': 6}.get(actor, 15))
                 for tool in definitions:
                     schema = tool['inputSchema']
                     self.assertFalse(schema['additionalProperties'])
@@ -1059,6 +1061,58 @@ class Contract(unittest.TestCase):
         god.tool('remember_conversation', {'target': 'wolves', 'conversation_id': 'another-group'}, error=True)
         self.assertEqual(json.loads((self.directory / 'conversations.json').read_text()), {'wolves': 'wolf-group'})
         self.client(SEATS[0]).tool('remember_conversation', {'target': 'wolves', 'conversation_id': 'x'}, error=True)
+
+    def models(self, **chosen):
+        return {seat: chosen.get(seat, 'luna') for seat in ('god', *SEATS)}
+
+    def test_new_game_opens_the_next_game_and_points_current_at_it(self):
+        with self.assertRaisesRegex(RuleError, 'round-1 还没结束'):
+            self.call('lead', 'new_game', models=self.models(), abandon_current=False)
+        self.assertEqual(os.readlink(self.root / 'current'), 'round-1')
+        opened = self.call('lead', 'new_game', models=self.models(p03='claude'), abandon_current=True)
+        self.assertEqual((opened['game_id'], opened['previous']), ('g001', 'round-1'))
+        game = self.root / 'g001'
+        self.assertEqual(os.readlink(self.root / 'current'), 'g001')
+        self.assertEqual(game.stat().st_mode & 0o777, 0o700)
+        seats = json.loads((game / 'seats.json').read_text())['seats']
+        self.assertEqual(seats, opened['seats'])
+        self.assertEqual(seats['god'], {'model': 'luna', 'principal': 'g001-god'})
+        self.assertEqual(seats['p03'], {'model': 'claude', 'principal': 'g001-p03'})
+        self.assertEqual(sorted(seats), sorted(('god', *SEATS)))
+        # The abandoned game is left as it was, and the new one starts empty and reads its seats.
+        self.assertTrue((self.directory / 'events.jsonl').exists())
+        self.assertFalse(self.game().started)
+        self.call('god', 'start_game', seed=3)
+        self.assertEqual(self.call('p01', 'my_info')['host'], 'g001-god')
+
+    def test_new_game_takes_the_smallest_unused_number(self):
+        for name in ('g001', 'g003', 'notes'):
+            (self.root / name).mkdir()
+        (self.root / 'archive' / 'run1-g002').mkdir(parents=True)
+        self.assertEqual(self.call('lead', 'new_game', models=self.models(), abandon_current=True)['game_id'], 'g002')
+        self.assertEqual(self.call('lead', 'new_game', models=self.models(), abandon_current=False)['game_id'], 'g004')
+
+    def test_new_game_works_without_a_current_game(self):
+        (self.root / 'current').unlink()
+        opened = self.call('lead', 'new_game', models=self.models(), abandon_current=False)
+        self.assertIsNone(opened['previous'])
+        self.assertEqual(os.readlink(self.root / 'current'), 'g001')
+
+    def test_only_the_lead_opens_games_and_it_does_nothing_else(self):
+        with self.assertRaises(RuleError):
+            self.call('god', 'new_game', models=self.models(), abandon_current=True)
+        for action, args in (('my_info', {}), ('next_step', {}), ('note', {'text': 'x'})):
+            with self.subTest(action=action), self.assertRaises(RuleError):
+                self.call('lead', action, **args)
+        models = self.models()
+        del models['p12']
+        for bad in (models, {**self.models(), 'p13': 'luna'}, self.models(p01=''), self.models(p01=3)):
+            with self.subTest(models=bad), self.assertRaises(RuleError):
+                self.call('lead', 'new_game', models=bad, abandon_current=True)
+        self.assertEqual(os.readlink(self.root / 'current'), 'round-1')
+        lead = self.client('lead')
+        self.assertEqual([t['name'] for t in lead.rpc('tools/list')['tools']], ['new_game'])
+        self.assertIn('还没结束', lead.tool('new_game', {'models': self.models(), 'abandon_current': False}, error=True))
 
 
 if __name__ == '__main__':
