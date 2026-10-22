@@ -37,28 +37,6 @@ def probe(path):
     return json.loads(run.stdout)
 
 
-def check_memory(required=512_000_000):
-    """Allow reclaimable inactive file cache; respect ancestor cgroup limits."""
-    mem = dict(line.split(':', 1) for line in Path('/proc/meminfo').read_text().splitlines())
-    available = int(mem['MemAvailable'].split()[0]) * 1024
-    for line in Path('/proc/self/cgroup').read_text().splitlines():
-        if not line.startswith('0::'):
-            continue
-        root = Path('/sys/fs/cgroup')
-        group = root / line[3:].lstrip('/')
-        while group != root:
-            if (group / 'memory.max').exists():
-                limit = (group / 'memory.max').read_text().strip()
-                if limit != 'max':
-                    stats = dict(row.split() for row in (group / 'memory.stat').read_text().splitlines())
-                    current = int((group / 'memory.current').read_text())
-                    available = min(available, int(limit) - current + int(stats.get('inactive_file', 0)))
-            group = group.parent
-    if available < required:
-        raise RuntimeError(f'可用内存不足：估计 {available/1024**2:.0f}MiB，需要 {required/1024**2:.0f}MiB；安全停止')
-    return available
-
-
 def check_entries(entries):
     previous = 0
     ids = set()
@@ -237,7 +215,6 @@ def frame_cues(data):
 
 def encode_video(game, data, temp, audio_duration):
     from render import render_frame
-    check_memory()
     manifest = []
     pages = frame_cues(data)
     for i, (e, cue) in enumerate(pages):
@@ -257,7 +234,6 @@ def encode_video(game, data, temp, audio_duration):
         concat += [f"file 'frame-{i:04}.png'", 'option framerate 1000', f'duration {duration:.6f}']
     concat += [f"file 'frame-{len(manifest)-1:04}.png'", 'option framerate 1000']
     (temp / 'frames.txt').write_text('\n'.join(concat) + '\n')
-    check_memory()
     cmd = ['ffmpeg', '-hide_banner', '-loglevel', 'error', '-nostdin', '-y', '-threads', '1', '-filter_threads', '1', '-safe', '0', '-f', 'concat',
         '-i', str(temp / 'frames.txt'), '-i', str(game / 'audio/full.mp3'), '-map', '0:v', '-map', '1:a',
         '-c:v', 'libx264', '-threads', '1', '-x264-params', 'rc-lookahead=10', '-preset', 'veryfast', '-tune', 'stillimage', '-crf', '24',
@@ -332,7 +308,6 @@ def main():
     parser.add_argument('--game', type=Path, default=ROOT / 'games/current')
     parser.add_argument('--web-only', action='store_true', help='仅网页与公开音轨；不表示视频验收完成')
     args = parser.parse_args()
-    check_memory()
     if not args.web_only:
         from render import font
         font(20)  # Check Pillow and the Chinese font before generating outputs.

@@ -54,7 +54,7 @@ agent 和成员 ID 一律用 `<局>-god`、`<局>-p01` … `<局>-p12` 这样的
 确认终局后（上帝宣布了胜负，引擎阶段是 finished）：
 1. 语音：复用 voice agent（claude-code harness，提示词 voice），没有就创建。用任务交给它：在项目目录运行 `tools/tts/run.sh --public <公共群 ID>`。狼队群由上帝在对局中记在 games/<局>/conversations.json，工具会自动读取。它会生成 transcript.json、audio/full.mp3、timeline.json 和 tts_verify.json。核验报告里有问题的话，让它说明是哪几句、为什么。
 2. 回放：语音完成后，复用 replay agent（claude-code harness，提示词 replay），没有就创建。用任务交给它：运行 `UV_CACHE_DIR=/tmp/replay-uv-cache uv run --with pillow python tools/replay/build.py`，生成 replay/index.html 和 replay/god.mp4，并用 ffprobe 核对 mp4 和 full.mp3 的时长。
-3. 机器只有 3.6GB 内存。重活一次只跑一个：语音做完再做回放，不要同时开两个任务。
+3. 回放要用语音的产物：语音做完再做回放，不要同时开两个任务。
 
 用户不要某项产出时，跳过对应的步骤。
 

@@ -5,7 +5,7 @@ import hashlib
 import json
 from pathlib import Path
 from browser import Browser
-from build import ROOT, check_memory, load_game, write
+from build import ROOT, load_game, write
 
 
 def verify(game):
@@ -22,7 +22,6 @@ def verify(game):
     }
     report = {'screenshots': [], 'checked_entries': {}, 'checks': [],
               'html_sha256': hashlib.sha256((output / 'index.html').read_bytes()).hexdigest()}
-    check_memory(700_000_000)
     with Browser() as browser:
         report['browser'] = browser.call('Browser.getVersion')['product']
         browser.call('Network.enable')
