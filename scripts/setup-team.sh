@@ -1,12 +1,11 @@
 #!/usr/bin/env bash
 # One-time setup: scripts/setup-team.sh <model>
 #
-# <model> is an agt model resource (see scripts/setup-models.sh); the lead runs on
-# it and offers it as the default for the God and the players. This writes
-# everything machine-specific into .agt (gitignored): workspace settings, the
-# engine's MCP servers, the two coding harnesses, the prompts and skills, and the
-# lead. Safe to re-run. The God, players, toolsmith, voice and replay agents are
-# created by the lead.
+# <model> is an agt model resource (see scripts/setup-models.sh); the lead and the
+# runner run on it, and the lead offers it as the default for the God and the
+# players. This writes everything machine-specific into .agt (gitignored):
+# workspace settings, the engine's MCP servers, the prompts and skills, the lead
+# and the runner. Safe to re-run. The God and the players are created by the lead.
 set -euo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
 export AGT_HOME="$root/.agt"
@@ -23,6 +22,9 @@ config["scheduler"].update(concurrency=4, discussion_seconds=None, replies_per_a
 # A dedicated home whose only MCP tools are our own engine: approvals would stall a
 # game of several hundred tool calls, so everything runs without asking.
 config["permissions"].update(mode="auto_allow", harness_mode="auto_allow", reviewer_model=f"default/{model}", request_timeout_seconds=3600)
+# The runner runs the project's commands on this machine; voicing a game takes tens
+# of minutes, well past the default 300-second limit.
+config["execution"].update(enabled=True, timeout_seconds=7200)
 json.dump(config, open(path, "w"), indent=2)
 EOF
 agt config apply "$root/.agt/config.yaml.new" >/dev/null && rm "$root/.agt/config.yaml.new"
@@ -41,24 +43,9 @@ EOF
   rm "$root/.agt/$name.json"
 done
 
-harness() {
-  local name="$1" engine="$2" executable="$3" description="$4"
-  agt harness resource info "$name" >/dev/null 2>&1 && return 0
-  [[ -n "$executable" ]] || { echo "skip harness $name: $engine is not installed"; return 0; }
-  cat > "$root/.agt/$name.json" <<EOF
-{"engine":"$engine","executable":"$executable","working_directory":"$root","sandbox":"workspace_write",
- "reasoning_effort":"high","timeout_seconds":3600,"description":"$description"}
-EOF
-  agt harness resource create "$name" --file "$root/.agt/$name.json" >/dev/null
-  rm "$root/.agt/$name.json"
-  agt harness resource test "$name" >/dev/null
-}
-harness codex codex "$(command -v codex || true)" "Codex in the werewolf-game project: writes and tests code"
-harness claude-code claude-code "$(command -v claude || true)" "Claude Code in the werewolf-game project: writes and runs scripts"
-
 # Prompts and skills live in prompts/ and docs/skills/; {{root}} becomes this checkout.
 render() { sed "s|{{root}}|$root|g" "$1" > "$root/.agt/rendered.md"; }
-for prompt in ww-god ww-player toolsmith voice replay; do
+for prompt in ww-god ww-player runner; do
   render "$root/prompts/$prompt.md"
   if exists prompt "$prompt"; then
     agt prompt update "$prompt" --file "$root/.agt/rendered.md" --yes >/dev/null
@@ -79,10 +66,18 @@ exists agent lead || agt agent create lead --model "$model" --prompt default/lea
   --builtin-tool resource_management --builtin-tool task_collaboration \
   --description "Builds and runs the werewolf team" >/dev/null
 agt agent info lead --output json | grep -q '"werewolf-game"' || agt agent update lead --add-skill werewolf-game >/dev/null
+# The runner is the only agent that can run shell commands: the lead hands it the
+# game directory setup, the voicing and the replay as tasks.
+exists agent runner || agt agent create runner --model "$model" --prompt runner \
+  --builtin-tool local_execution --description "Runs the project's commands for the lead" >/dev/null
 agt im principal info web-operator >/dev/null 2>&1 || agt im principal create web-operator --name "我" >/dev/null
 agt im owner ensure web-operator >/dev/null
 agt im principal info lead >/dev/null 2>&1 || {
   agt tool call --principal web-operator --manager principal_create --args '{"id":"lead","name":"Lead","kind":"agent"}' >/dev/null
   agt tool call --principal web-operator --manager agent_bind --args '{"principal":"lead","agent":"lead"}' >/dev/null
 }
-echo "ready: lead on $model with skill werewolf-game; engine MCP servers, harnesses, prompts and skills installed"
+agt im principal info runner >/dev/null 2>&1 || {
+  agt tool call --principal web-operator --manager principal_create --args '{"id":"runner","name":"Runner","kind":"agent"}' >/dev/null
+  agt tool call --principal web-operator --manager agent_bind --args "{\"principal\":\"runner\",\"agent\":\"runner\",\"working_directory\":\"$root\"}" >/dev/null
+}
+echo "ready: lead and runner on $model with skill werewolf-game; engine MCP servers, prompts and skills installed"
