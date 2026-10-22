@@ -204,6 +204,7 @@ class Game:
     def apply(self, actor, action, args):
         if action == 'start_game':
             require(actor == 'god' and not self.started, '只有上帝可初始化空对局')
+            require(isinstance(args['seed'], int), '种子必须在写入日志前确定')
             self.started = True
             self.seed = args['seed']
             roles = list(ROLES)
@@ -443,7 +444,7 @@ class Game:
                                'conversation_id': conversations.get('public'),
                                'mapping_required': 'public' not in conversations,
                                'mentions': [], 'actions': ['start_game'], 'say': '本局游戏开始，请各位确认自己的身份。',
-                               'instruction': '先调用 start_game(seed) 初始化对局；种子不公开。'}]}
+                               'instruction': '先调用 start_game(seed=null) 初始化对局，引擎用当前时间作种子；种子不公开。'}]}
         phase = self.phase
         calls = []
 
@@ -592,7 +593,8 @@ TOOLS = {
                              'required': ['god', *SEATS], 'additionalProperties': False},
                   'abandon_current': {'type': 'boolean'}}),
     'my_info': ('both', '读取公开历史和自己的私有信息；上帝可见角色表。', {}),
-    'start_game': ('god', '以记录的整数种子初始化当前空对局。', {'seed': {'type': 'integer'}}),
+    'start_game': ('god', '初始化当前空对局。seed 传 null 时用当前时间（YYYYMMDDHHMMSS）作种子；种子写进事件日志，可复盘。',
+                   {'seed': {'type': ['integer', 'null']}}),
     'next_step': ('god', '当前阶段的点名、会话映射、开放操作；票齐后提供票型。', {}),
     'advance': ('god', '公布死讯或完整票型并自动执行结算；不能代玩家行动。', {}),
     'export_replay': ('god', '仅完局后导出完整可重放 events.jsonl。', {}),
@@ -831,6 +833,9 @@ class Store:
                 require(game.started and game.winner, '仅完局后允许完整导出')
                 return {'format': 'werewolf-events-v1', 'game_id': game_id,
                         'winner': game.winner, 'roles': game.roles, 'events': events, 'jsonl': raw.decode()}
+            if name == 'start_game' and args['seed'] is None:
+                # The log keeps the seed actually used, so the game replays the same.
+                args = {'seed': int(datetime.datetime.now().strftime('%Y%m%d%H%M%S'))}
             game.apply(actor, name, args)
             event = {'version': 1, 'seq': len(events) + 1,
                      'at': datetime.datetime.now(datetime.timezone.utc).isoformat(),
@@ -860,7 +865,7 @@ class Store:
             finally:
                 os.close(fd)
             # Never return state/sequence or partial vote information on mutation.
-            return {'accepted': True}
+            return {'accepted': True, 'seed': args['seed']} if name == 'start_game' else {'accepted': True}
 
 
 class Server:

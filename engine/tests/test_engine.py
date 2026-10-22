@@ -1114,6 +1114,18 @@ class Contract(unittest.TestCase):
         self.assertEqual([t['name'] for t in lead.rpc('tools/list')['tools']], ['new_game'])
         self.assertIn('还没结束', lead.tool('new_game', {'models': self.models(), 'abandon_current': False}, error=True))
 
+    def test_start_game_without_a_seed_uses_the_time_and_logs_it(self):
+        (self.root / 'current').unlink()
+        self.call('lead', 'new_game', models=self.models(), abandon_current=False)
+        started = self.call('god', 'start_game', seed=None)
+        seed = started['seed']
+        self.assertRegex(str(seed), r'^20\d{12}$')
+        log = [json.loads(line) for line in (self.root / 'g001' / 'events.jsonl').read_text().splitlines()]
+        self.assertEqual(log[0]['args'], {'seed': seed})
+        self.assertEqual(self.game().seed, seed)
+        with self.assertRaises(RuleError):
+            Game().apply('god', 'start_game', {'seed': None})
+
 
 if __name__ == '__main__':
     unittest.main()
