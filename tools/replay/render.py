@@ -29,9 +29,10 @@ def font_file(bold):
     weight = 'Bold' if bold else 'Regular'
     if os.environ.get('WW_FONT_BOLD' if bold else 'WW_FONT'):
         return os.environ['WW_FONT_BOLD' if bold else 'WW_FONT']
-    for folder in FONT_DIRS:
-        if (path := Path(folder) / f'NotoSansCJK-{weight}.ttc').exists():
-            return str(path)
+    for name in (f'NotoSansCJK-{weight}.ttc', 'NotoSansCJK.ttc'):
+        for folder in FONT_DIRS:
+            if (path := Path(folder) / name).exists():
+                return str(path)
     try:
         found = subprocess.run(['fc-match', '-f', '%{file}', f'Noto Sans CJK SC:style={weight}'],
                                capture_output=True, text=True, check=True).stdout
@@ -43,9 +44,26 @@ def font_file(bold):
     return found
 
 
+@lru_cache(maxsize=2)
+def font_index(bold):
+    """Face of a collection holding every weight (Homebrew's NotoSansCJK.ttc); 0 otherwise."""
+    path = font_file(bold)
+    if Path(path).name != 'NotoSansCJK.ttc':
+        return 0
+    wanted, index = ('Noto Sans CJK SC', 'Bold' if bold else 'Regular'), 0
+    while True:
+        try:
+            face = ImageFont.truetype(path, 10, index=index)
+        except OSError:
+            return 0
+        if face.getname() == wanted:
+            return index
+        index += 1
+
+
 @lru_cache(maxsize=32)
 def font(size, bold=False):
-    return ImageFont.truetype(font_file(bold), size)
+    return ImageFont.truetype(font_file(bold), size, index=font_index(bold))
 
 
 def wrap(text, size, width, bold=False):

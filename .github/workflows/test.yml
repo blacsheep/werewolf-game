@@ -39,6 +39,9 @@ jobs:
           cp examples/sample-game/* "$game/" && chmod 600 "$game/events.jsonl"
           duration=$(python3 -c 'import json; print(json.load(open("examples/sample-game/timeline.json"))["duration"])')
           ffmpeg -loglevel error -f lavfi -i anullsrc=r=24000:cl=mono -t "$duration" -c:a libmp3lame -b:a 32k "$game/audio/full.mp3"
+          uv run --no-project --with pillow python -c 'import sys; sys.path.insert(0, "tools/replay"); import render
+          for bold, style in ((False, "Regular"), (True, "Bold")):
+              name = render.font(20, bold).getname(); print(name); assert "CJK" in name[0] and name[1] == style, name'
           uv run --no-project --with pillow python tools/replay/build.py --game "$game"
           (cd tools/replay && WW_REPLAY_GAME="$game" uv run --no-project --with pillow python -m unittest test_replay)
           python3 tools/replay/verify_browser.py --game "$game" > /dev/null
