@@ -105,6 +105,8 @@ scripts/setup-team.sh claude         # the lead, voice and replay run on this mo
 scripts/console.sh &                 # start the web console; its link is written to recording/console.log
 ```
 
+The argument to `setup-team.sh` is a model name that `setup-models.sh` created, not the name of a vendor or of a vendor's model. Each name is the prefix of a block in `models.env`, in lowercase: `CLAUDE_*` becomes `claude`, `DEEPSEEK_*` becomes `deepseek`, and a block you add yourself, such as `LUNA_*`, becomes `luna`. `setup-models.sh` prints `ok   <name> -> <model>` for each model it creates; pass one of those names. `claude` above is only an example: if you did not fill in `CLAUDE_*`, use a block you did fill in.
+
 `models.env` is gitignored, and keys are stored only in your local agt providers. Everything under `.agt/` is generated for your machine by the setup scripts and is not committed either.
 
 Open the console, message the lead and say "开一局狼人杀". The lead asks you once about the following; reply "默认" ("defaults") to start right away:

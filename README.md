@@ -105,6 +105,8 @@ scripts/setup-team.sh claude         # lead、配音和回放用这个模型，�
 scripts/console.sh &                 # 启动 Web 控制台，地址写在 recording/console.log
 ```
 
+`setup-team.sh` 的参数是 `setup-models.sh` 生成的模型名，不是厂商或模型本身的名字。模型名取自 `models.env` 里那组变量的前缀并转成小写：`CLAUDE_*` 生成 `claude`，`DEEPSEEK_*` 生成 `deepseek`，自己加的 `LUNA_*` 生成 `luna`。`setup-models.sh` 每生成一个模型会打印一行 `ok   <模型名> -> <模型>`，从里面选一个填进去即可。上面的 `claude` 只是例子，没填 `CLAUDE_*` 时要换成你实际填了的那一组。
+
 `models.env` 在 `.gitignore` 里，key 只保存在你本机的 agt provider 里，不会进仓库。`.agt/` 里的东西全部由 setup 脚本按本机路径生成，也不进仓库。
 
 打开控制台，私聊 lead，说「开一局狼人杀」。lead 会用一条消息和你对齐以下几项，回复「默认」就直接开跑：
