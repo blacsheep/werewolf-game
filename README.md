@@ -46,6 +46,25 @@
 - 能访问微软 edge-tts 服务的网络（配音用）
 - 内存建议 4 GB 以上
 
+在 Debian/Ubuntu 上可以这样装齐（其他系统见各项目的安装说明）：
+
+```bash
+# agt：预编译二进制，装到 ~/.local/bin；已装旧版重跑一次就会升级
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/blacsheep/agt/releases/latest/download/agt-cli-installer.sh | sh
+# uv
+curl -LsSf https://astral.sh/uv/install.sh | sh
+# Python、ffmpeg 和中文字体
+sudo apt install python3 ffmpeg fonts-noto-cjk
+# Google Chrome
+wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+sudo apt install ./google-chrome-stable_current_amd64.deb
+# 两个编码 harness（Codex 需要 Node.js 和 npm），装好后各登录一次：codex login；claude 首次运行时登录
+npm install -g @openai/codex
+curl -fsSL https://claude.ai/install.sh | bash
+```
+
+`scripts/setup-team.sh` 注册这两个 harness 时会顺带测试，先登录好再运行。
+
 ## 快速开始
 
 ```bash

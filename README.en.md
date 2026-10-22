@@ -46,6 +46,25 @@ The game itself takes about two hours (measured with one reasoning model on all 
 - Network access to Microsoft's edge-tts service (for the voices)
 - 4 GB of RAM or more is recommended
 
+On Debian/Ubuntu you can install them like this (for other systems, see each project's install guide):
+
+```bash
+# agt: a prebuilt binary in ~/.local/bin; run it again to upgrade an older version
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/blacsheep/agt/releases/latest/download/agt-cli-installer.sh | sh
+# uv
+curl -LsSf https://astral.sh/uv/install.sh | sh
+# Python, ffmpeg and the CJK fonts
+sudo apt install python3 ffmpeg fonts-noto-cjk
+# Google Chrome
+wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+sudo apt install ./google-chrome-stable_current_amd64.deb
+# The two coding harnesses (Codex needs Node.js and npm); sign in to each once: codex login; claude asks on first run
+npm install -g @openai/codex
+curl -fsSL https://claude.ai/install.sh | bash
+```
+
+`scripts/setup-team.sh` tests both harnesses when it registers them, so sign in first.
+
 ## Quick start
 
 ```bash
