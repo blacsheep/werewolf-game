@@ -37,35 +37,54 @@ The game itself takes about two hours (measured with one reasoning model on all 
 
 ## Requirements
 
-- [agt](https://github.com/blacsheep/agt) ≥ 0.6.1
-- Python 3.10+, [uv](https://docs.astral.sh/uv/), ffmpeg
-- Google Chrome or Chromium (replay checks and screen recording)
-- Noto Sans CJK fonts (Debian/Ubuntu: `apt install fonts-noto-cjk`; point `WW_FONT` and `WW_FONT_BOLD` at other font files)
-- At least one model API with tool calling
-- Network access to Microsoft's edge-tts service (for the voices)
-- 4 GB of RAM or more is recommended
+Linux and macOS are supported. Every agent runs on the models you configure in agt, so you do not need Codex or Claude Code.
 
-Linux and macOS are supported; pick the steps for your system. Every agent runs on the models you configure in agt, so you do not need Codex or Claude Code.
+| Requirement | What it is for |
+| --- | --- |
+| [agt](https://github.com/blacsheep/agt) ≥ 0.6.1 | Runs every agent (the lead, the God, the 12 players and the runner) along with the chats, tasks and web console |
+| Python 3.10+ | Runs the rules engine (standard library only) and the setup scripts |
+| [uv](https://docs.astral.sh/uv/) | Runs the voice and replay tools, fetching their edge-tts, numpy and Pillow on demand instead of installing them into the system Python |
+| ffmpeg | Joins the voiced lines into the full game's audio and encodes the replay mp4 |
+| Google Chrome or Chromium (optional) | Checks the replay page automatically (`tools/replay/verify_browser.py`) and runs the screen recorder; a normal game does not need it |
+| Noto Sans CJK fonts | Draws the Chinese text in the replay video |
+| At least one model API with tool calling | What the agents think with; the key goes in `models.env` (see Quick start) |
+| Network access to Microsoft's edge-tts service | Voices every line |
+
+4 GB of RAM or more is recommended.
 
 ### Linux (Debian/Ubuntu)
 
 ```bash
-# agt: a prebuilt binary in ~/.local/bin; run it again to upgrade an older version
+# agt: a single prebuilt program in ~/.local/bin. If an older version is installed, running this again upgrades it
 curl --proto '=https' --tlsv1.2 -LsSf https://github.com/blacsheep/agt/releases/latest/download/agt-cli-installer.sh | sh
+
+# uv: runs the voice and replay tools
 curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Python (the engine), ffmpeg (audio and video) and the Chinese fonts (the video frames)
 sudo apt install python3 ffmpeg fonts-noto-cjk
+
+# Optional: Google Chrome (replay checks and screen recording). Download the official package, then install it
 wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
 sudo apt install ./google-chrome-stable_current_amd64.deb
 ```
 
 ### macOS
 
-Install [Homebrew](https://brew.sh) first.
+Install [Homebrew](https://brew.sh) first; everything below comes from it.
 
 ```bash
+# agt: a single prebuilt program in ~/.local/bin. If an older version is installed, running this again upgrades it
 curl --proto '=https' --tlsv1.2 -LsSf https://github.com/blacsheep/agt/releases/latest/download/agt-cli-installer.sh | sh
+
+# Python (the engine), uv (the voice and replay tools) and ffmpeg (audio and video)
 brew install python uv ffmpeg
-brew install --cask google-chrome font-noto-sans-cjk
+
+# The Chinese fonts (the video frames)
+brew install --cask font-noto-sans-cjk
+
+# Optional: Google Chrome (replay checks and screen recording)
+brew install --cask google-chrome
 ```
 
 If the replay cannot find the Chinese font, point `WW_FONT` and `WW_FONT_BOLD` at the font files; if Chrome is not in its usual place, point `CHROME` at the browser binary.

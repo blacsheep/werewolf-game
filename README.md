@@ -37,35 +37,54 @@
 
 ## 准备
 
-- [agt](https://github.com/blacsheep/agt) ≥ 0.6.1
-- Python 3.10+、[uv](https://docs.astral.sh/uv/)、ffmpeg
-- Google Chrome 或 Chromium（回放验收和录屏用）
-- Noto Sans CJK 字体（Debian/Ubuntu：`apt install fonts-noto-cjk`；其他字体可以用 `WW_FONT`、`WW_FONT_BOLD` 指定）
-- 至少一个支持工具调用的模型 API
-- 能访问微软 edge-tts 服务的网络（配音用）
-- 内存建议 4 GB 以上
+支持 Linux 和 macOS。所有 agent 都用你在 agt 里配置的模型，不需要另装 Codex 或 Claude Code。
 
-支持 Linux 和 macOS，按你的系统选一种装法。所有 agent 都用你在 agt 里配置的模型，不需要另装 Codex 或 Claude Code。
+| 依赖 | 用来做什么 |
+| --- | --- |
+| [agt](https://github.com/blacsheep/agt) ≥ 0.6.1 | 运行所有 agent：lead、上帝、12 名玩家和 runner，以及群聊、任务和 Web 控制台 |
+| Python 3.10+ | 运行规则引擎（只用标准库）和 setup 脚本 |
+| [uv](https://docs.astral.sh/uv/) | 运行配音和回放工具，按需拉取它们用的 edge-tts、numpy、Pillow，不装进系统 Python |
+| ffmpeg | 把每句配音拼成整局音频，把回放画面编码成 mp4 |
+| Google Chrome 或 Chromium（可选） | 回放网页的自动验收（`tools/replay/verify_browser.py`）和录屏脚本；正常开一局用不到 |
+| Noto Sans CJK 字体 | 在回放视频的画面上画中文 |
+| 至少一个支持工具调用的模型 API | agent 的大脑；key 填在 `models.env` 里，见下面的快速开始 |
+| 能访问微软 edge-tts 服务的网络 | 给每句话配音 |
+
+内存建议 4 GB 以上。
 
 ### Linux（Debian/Ubuntu）
 
 ```bash
-# agt：预编译二进制，装到 ~/.local/bin；已装旧版重跑一次就会升级
+# agt：预编译的单个程序，装到 ~/.local/bin。已经装过旧版的话，重跑这条就会升级
 curl --proto '=https' --tlsv1.2 -LsSf https://github.com/blacsheep/agt/releases/latest/download/agt-cli-installer.sh | sh
+
+# uv：配音和回放工具靠它运行
 curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Python（引擎）、ffmpeg（音视频）、中文字体（视频画面）
 sudo apt install python3 ffmpeg fonts-noto-cjk
+
+# 可选：Google Chrome（回放验收和录屏）。下载官方安装包再装
 wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
 sudo apt install ./google-chrome-stable_current_amd64.deb
 ```
 
 ### macOS
 
-需要先装好 [Homebrew](https://brew.sh)。
+先装好 [Homebrew](https://brew.sh)，下面的依赖都用它装。
 
 ```bash
+# agt：预编译的单个程序，装到 ~/.local/bin。已经装过旧版的话，重跑这条就会升级
 curl --proto '=https' --tlsv1.2 -LsSf https://github.com/blacsheep/agt/releases/latest/download/agt-cli-installer.sh | sh
+
+# Python（引擎）、uv（配音和回放工具）、ffmpeg（音视频）
 brew install python uv ffmpeg
-brew install --cask google-chrome font-noto-sans-cjk
+
+# 中文字体（视频画面）
+brew install --cask font-noto-sans-cjk
+
+# 可选：Google Chrome（回放验收和录屏）
+brew install --cask google-chrome
 ```
 
 回放如果提示找不到中文字体，用 `WW_FONT`、`WW_FONT_BOLD` 指向字体文件；Chrome 不在默认位置时，用 `CHROME` 指向浏览器程序。
