@@ -46,7 +46,7 @@ The game itself takes about two hours (measured with one reasoning model on all 
 - Network access to Microsoft's edge-tts service (for the voices)
 - 4 GB of RAM or more is recommended
 
-Pick the steps for your system. On every system you then sign in to the two coding harnesses: run `codex login` once, and Claude Code asks you to sign in the first time you run `claude`. `scripts/setup-team.sh` tests both harnesses when it registers them, so sign in before running it.
+Linux and macOS are supported; pick the steps for your system. On either one you then sign in to the two coding harnesses: run `codex login` once, and Claude Code asks you to sign in the first time you run `claude`. `scripts/setup-team.sh` tests both harnesses when it registers them, so sign in before running it.
 
 ### Linux (Debian/Ubuntu)
 
@@ -77,13 +77,7 @@ If the replay cannot find the Chinese font, point `WW_FONT` and `WW_FONT_BOLD` a
 
 ### Windows
 
-The engine and scripts rely on POSIX file locks, symbolic links and bash, so they do not run on native Windows. Use WSL2:
-
-```powershell
-wsl --install -d Ubuntu
-```
-
-After the restart, open Ubuntu and follow the Linux steps above inside it; run every later command in WSL as well. Clone the project into WSL's own file system (such as `~/werewolf-game`), not under `/mnt/c`: files there are open to every user, and the engine refuses to read or write a game log with those permissions. Open the console link in your Windows browser.
+Not supported. The rules engine relies on file locks and safe file interfaces that Windows lacks (`fcntl`, `O_NOFOLLOW`, directory fds), and the scripts are bash.
 
 ## Quick start
 

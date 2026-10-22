@@ -46,7 +46,7 @@
 - 能访问微软 edge-tts 服务的网络（配音用）
 - 内存建议 4 GB 以上
 
-按你的系统选一种装法。三种系统最后都要登录两个编码 harness：运行一次 `codex login`，Claude Code 首次运行 `claude` 时会提示登录。`scripts/setup-team.sh` 注册 harness 时会顺带测试，所以先登录好再运行它。
+支持 Linux 和 macOS，按你的系统选一种装法。两种系统最后都要登录两个编码 harness：运行一次 `codex login`，Claude Code 首次运行 `claude` 时会提示登录。`scripts/setup-team.sh` 注册 harness 时会顺带测试，所以先登录好再运行它。
 
 ### Linux（Debian/Ubuntu）
 
@@ -77,13 +77,7 @@ curl -fsSL https://claude.ai/install.sh | bash
 
 ### Windows
 
-引擎和脚本依赖 POSIX 文件锁、符号链接和 bash，不能在原生 Windows 上运行，要用 WSL2：
-
-```powershell
-wsl --install -d Ubuntu
-```
-
-重启后打开 Ubuntu，在里面按上面 Linux 的步骤安装和运行，后面所有命令也都在 WSL 里执行。项目要克隆到 WSL 自己的目录（比如 `~/werewolf-game`），不要放在 `/mnt/c` 下：那里的文件权限对所有用户开放，引擎会拒绝读写对局日志。控制台链接直接用 Windows 的浏览器打开即可。
+暂不支持。规则引擎依赖 Windows 没有的文件锁和安全文件接口（`fcntl`、`O_NOFOLLOW`、目录 fd），脚本也都是 bash。
 
 ## 快速开始
 

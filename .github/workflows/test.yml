@@ -3,21 +3,42 @@ name: test
 on:
   push:
   pull_request:
+  workflow_dispatch:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # macOS minutes cost more, so plain pushes test Linux only; pull requests
+        # and manual runs test both.
+        os: ${{ github.event_name == 'push' && fromJSON('["ubuntu-latest"]') || fromJSON('["ubuntu-latest", "macos-latest"]') }}
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - uses: astral-sh/setup-uv@v6
-      - run: sudo apt-get update && sudo apt-get install -y ffmpeg fonts-noto-cjk
+      - name: system packages (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg fonts-noto-cjk
+      - name: system packages (macOS)
+        if: runner.os == 'macOS'
+        run: brew install ffmpeg && brew install --cask font-noto-sans-cjk
       - name: engine
         run: python3 -m unittest discover -s engine/tests
       - name: tts
         run: uv run --no-project --with numpy python3 -m unittest discover -s tools/tts/tests
-      - name: replay (skips without a finished game)
-        working-directory: tools/replay
-        run: uv run --no-project --with pillow python -m unittest test_replay
+      # The sample game has no audio, so give it a silent track of the same length
+      # and build, test and browser-check its replay.
+      - name: replay of the sample game
+        run: |
+          game="$RUNNER_TEMP/games/sample"
+          mkdir -p "$game/audio" && chmod 700 "$game"
+          cp examples/sample-game/* "$game/" && chmod 600 "$game/events.jsonl"
+          duration=$(python3 -c 'import json; print(json.load(open("examples/sample-game/timeline.json"))["duration"])')
+          ffmpeg -loglevel error -f lavfi -i anullsrc=r=24000:cl=mono -t "$duration" -c:a libmp3lame -b:a 32k "$game/audio/full.mp3"
+          uv run --no-project --with pillow python tools/replay/build.py --game "$game"
+          (cd tools/replay && WW_REPLAY_GAME="$game" uv run --no-project --with pillow python -m unittest test_replay)
+          python3 tools/replay/verify_browser.py --game "$game" > /dev/null
