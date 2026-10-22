@@ -6,9 +6,9 @@ Twelve AI players play a 12-seat Werewolf game (Seer, Witch, Hunter, Guard, four
 
 You tell the lead agent "开一局狼人杀" ("start a game of werewolf") and answer one setup question. The agents do the rest: they build the team, open the chats, host the game, record the voices and render the video, with nobody watching. Built on [agt](https://github.com/blacsheep/agt).
 
-![God's view: the wolves talk on the first night](docs/images/replay-god.png)
+[![God's view replay: highlights of game 1](docs/images/demo.webp)](docs/demo.mp4)
 
-<!-- TODO: demo video link (GitHub Release asset) -->
+[▶ Watch the voiced highlights](docs/demo.mp4) (3 minutes, God's view, in Chinese): the wolves pick their first target, wolf No. 1 claims to be the Seer and wins the sheriff badge, the real Seer No. 5 is exiled, and the wolves win.
 
 ## What's different
 

@@ -6,9 +6,9 @@
 
 你只需要对 lead 说一句「开一局狼人杀」，再回答一次配置确认。之后的组队、建群、主持、配音和出视频都由 agent 自己完成，中途不用人盯。项目基于 [agt](https://github.com/blacsheep/agt)。
 
-![上帝视角：首夜狼队夜聊](docs/images/replay-god.png)
+[![上帝视角回放：第 1 局精华](docs/images/demo.webp)](docs/demo.mp4)
 
-<!-- TODO: 演示视频链接（GitHub Release 附件） -->
+[▶ 观看带语音的精华剪辑](docs/demo.mp4)（3 分钟，上帝视角）：首夜狼队商量刀口，一号狼人悍跳预言家拿下警徽，真预言家五号被放逐，最后狼人阵营获胜。
 
 ## 有什么不一样
 
