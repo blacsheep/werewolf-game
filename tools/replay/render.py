@@ -9,10 +9,10 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
-# Noto Sans CJK in the usual Linux locations, then whatever fontconfig finds;
+# Noto Sans CJK in the usual Linux and macOS locations, then whatever fontconfig finds;
 # WW_FONT and WW_FONT_BOLD name the files directly.
 FONT_DIRS = ['/usr/share/fonts/opentype/noto', '/usr/share/fonts/noto-cjk', '/usr/share/fonts/google-noto-cjk',
-             '/usr/share/fonts/OTF', '/opt/homebrew/share/fonts', '/Library/Fonts']
+             '/usr/share/fonts/OTF', '/opt/homebrew/share/fonts', '/Library/Fonts', str(Path.home() / 'Library/Fonts')]
 W, H = 1280, 720
 INK, MUTED, FAINT = '#f3efe6', '#a9adbb', '#6c7184'
 WOLF, GOD_ROLE, VILLAGER, GOLD, PRIVATE = '#e5484d', '#f5b84a', '#5b9cf5', '#f5c451', '#a78bfa'
@@ -38,7 +38,7 @@ def font_file(bold):
     except (OSError, subprocess.CalledProcessError):
         found = ''
     if 'CJK' not in found:
-        raise RuntimeError('找不到中文字体 Noto Sans CJK：请安装（Debian/Ubuntu：apt install fonts-noto-cjk），'
+        raise RuntimeError('找不到中文字体 Noto Sans CJK：请安装（Debian/Ubuntu：apt install fonts-noto-cjk；macOS：brew install --cask font-noto-sans-cjk），'
                            '或用 WW_FONT、WW_FONT_BOLD 指定字体文件')
     return found
 

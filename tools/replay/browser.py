@@ -23,9 +23,13 @@ class Browser:
             os.set_inheritable(3, True)
             os.set_inheritable(4, True)
 
-        chrome = next((shutil.which(c) for c in ['google-chrome', 'chromium', 'chromium-browser'] if shutil.which(c)), None)
+        # CHROME names the binary directly; macOS keeps Chrome inside its app bundle, off PATH.
+        candidates = [os.environ.get('CHROME', ''), 'google-chrome', 'chromium', 'chromium-browser',
+                      '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+                      '/Applications/Chromium.app/Contents/MacOS/Chromium']
+        chrome = next((shutil.which(c) for c in candidates if c and shutil.which(c)), None)
         if not chrome:
-            raise RuntimeError('需要 Google Chrome 或 Chromium')
+            raise RuntimeError('需要 Google Chrome 或 Chromium，或用 CHROME 指定浏览器路径')
         self.process = subprocess.Popen([chrome, '--headless', '--no-sandbox', '--disable-gpu',
             '--disable-dev-shm-usage', '--disable-background-networking', '--no-first-run',
             '--no-default-browser-check', '--remote-debugging-pipe', '--allow-file-access-from-files',

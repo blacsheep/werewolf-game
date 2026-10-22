@@ -7,7 +7,9 @@ export AGT_HOME="$root/.agt"
 set -a; source "$root/models.env"; set +a
 
 # Every <NAME>_BASE_URL in models.env is one block, so you can add your own.
-mapfile -t names < <(sed -n 's/^\([A-Z0-9]*\)_BASE_URL=.*/\1/p' "$root/models.env")
+# A read loop rather than mapfile, which macOS's bash 3.2 lacks.
+names=()
+while read -r n; do names+=("$n"); done < <(sed -n 's/^\([A-Z0-9]*\)_BASE_URL=.*/\1/p' "$root/models.env")
 for n in "${names[@]}"; do
   base="${n}_BASE_URL"; key="${n}_API_KEY"; model="${n}_MODEL"; fmt="${n}_FORMAT"; effort="${n}_EFFORT"
   name="$(tr '[:upper:]' '[:lower:]' <<<"$n")"

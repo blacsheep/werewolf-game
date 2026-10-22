@@ -46,24 +46,44 @@
 - 能访问微软 edge-tts 服务的网络（配音用）
 - 内存建议 4 GB 以上
 
-在 Debian/Ubuntu 上可以这样装齐（其他系统见各项目的安装说明）：
+按你的系统选一种装法。三种系统最后都要登录两个编码 harness：运行一次 `codex login`，Claude Code 首次运行 `claude` 时会提示登录。`scripts/setup-team.sh` 注册 harness 时会顺带测试，所以先登录好再运行它。
+
+### Linux（Debian/Ubuntu）
 
 ```bash
 # agt：预编译二进制，装到 ~/.local/bin；已装旧版重跑一次就会升级
 curl --proto '=https' --tlsv1.2 -LsSf https://github.com/blacsheep/agt/releases/latest/download/agt-cli-installer.sh | sh
-# uv
 curl -LsSf https://astral.sh/uv/install.sh | sh
-# Python、ffmpeg 和中文字体
-sudo apt install python3 ffmpeg fonts-noto-cjk
-# Google Chrome
+sudo apt install python3 ffmpeg fonts-noto-cjk nodejs npm
 wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
 sudo apt install ./google-chrome-stable_current_amd64.deb
-# 两个编码 harness（Codex 需要 Node.js 和 npm），装好后各登录一次：codex login；claude 首次运行时登录
 npm install -g @openai/codex
 curl -fsSL https://claude.ai/install.sh | bash
 ```
 
-`scripts/setup-team.sh` 注册这两个 harness 时会顺带测试，先登录好再运行。
+### macOS
+
+需要先装好 [Homebrew](https://brew.sh)。
+
+```bash
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/blacsheep/agt/releases/latest/download/agt-cli-installer.sh | sh
+brew install python uv ffmpeg node
+brew install --cask google-chrome font-noto-sans-cjk
+npm install -g @openai/codex
+curl -fsSL https://claude.ai/install.sh | bash
+```
+
+回放如果提示找不到中文字体，用 `WW_FONT`、`WW_FONT_BOLD` 指向字体文件；Chrome 不在默认位置时，用 `CHROME` 指向浏览器程序。
+
+### Windows
+
+引擎和脚本依赖 POSIX 文件锁、符号链接和 bash，不能在原生 Windows 上运行，要用 WSL2：
+
+```powershell
+wsl --install -d Ubuntu
+```
+
+重启后打开 Ubuntu，在里面按上面 Linux 的步骤安装和运行，后面所有命令也都在 WSL 里执行。项目要克隆到 WSL 自己的目录（比如 `~/werewolf-game`），不要放在 `/mnt/c` 下：那里的文件权限对所有用户开放，引擎会拒绝读写对局日志。控制台链接直接用 Windows 的浏览器打开即可。
 
 ## 快速开始
 

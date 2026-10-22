@@ -46,24 +46,44 @@ The game itself takes about two hours (measured with one reasoning model on all 
 - Network access to Microsoft's edge-tts service (for the voices)
 - 4 GB of RAM or more is recommended
 
-On Debian/Ubuntu you can install them like this (for other systems, see each project's install guide):
+Pick the steps for your system. On every system you then sign in to the two coding harnesses: run `codex login` once, and Claude Code asks you to sign in the first time you run `claude`. `scripts/setup-team.sh` tests both harnesses when it registers them, so sign in before running it.
+
+### Linux (Debian/Ubuntu)
 
 ```bash
 # agt: a prebuilt binary in ~/.local/bin; run it again to upgrade an older version
 curl --proto '=https' --tlsv1.2 -LsSf https://github.com/blacsheep/agt/releases/latest/download/agt-cli-installer.sh | sh
-# uv
 curl -LsSf https://astral.sh/uv/install.sh | sh
-# Python, ffmpeg and the CJK fonts
-sudo apt install python3 ffmpeg fonts-noto-cjk
-# Google Chrome
+sudo apt install python3 ffmpeg fonts-noto-cjk nodejs npm
 wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
 sudo apt install ./google-chrome-stable_current_amd64.deb
-# The two coding harnesses (Codex needs Node.js and npm); sign in to each once: codex login; claude asks on first run
 npm install -g @openai/codex
 curl -fsSL https://claude.ai/install.sh | bash
 ```
 
-`scripts/setup-team.sh` tests both harnesses when it registers them, so sign in first.
+### macOS
+
+Install [Homebrew](https://brew.sh) first.
+
+```bash
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/blacsheep/agt/releases/latest/download/agt-cli-installer.sh | sh
+brew install python uv ffmpeg node
+brew install --cask google-chrome font-noto-sans-cjk
+npm install -g @openai/codex
+curl -fsSL https://claude.ai/install.sh | bash
+```
+
+If the replay cannot find the Chinese font, point `WW_FONT` and `WW_FONT_BOLD` at the font files; if Chrome is not in its usual place, point `CHROME` at the browser binary.
+
+### Windows
+
+The engine and scripts rely on POSIX file locks, symbolic links and bash, so they do not run on native Windows. Use WSL2:
+
+```powershell
+wsl --install -d Ubuntu
+```
+
+After the restart, open Ubuntu and follow the Linux steps above inside it; run every later command in WSL as well. Clone the project into WSL's own file system (such as `~/werewolf-game`), not under `/mnt/c`: files there are open to every user, and the engine refuses to read or write a game log with those permissions. Open the console link in your Windows browser.
 
 ## Quick start
 
