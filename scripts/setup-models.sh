@@ -11,7 +11,7 @@ set -a; source "$root/models.env"; set +a
 names=()
 while read -r n; do names+=("$n"); done < <(sed -n 's/^\([A-Z0-9]*\)_BASE_URL=.*/\1/p' "$root/models.env")
 for n in "${names[@]}"; do
-  base="${n}_BASE_URL"; key="${n}_API_KEY"; model="${n}_MODEL"; fmt="${n}_FORMAT"; effort="${n}_EFFORT"
+  base="${n}_BASE_URL"; key="${n}_API_KEY"; model="${n}_MODEL"; fmt="${n}_FORMAT"; effort="${n}_EFFORT"; timeout="${n}_TIMEOUT"
   name="$(tr '[:upper:]' '[:lower:]' <<<"$n")"
   # A block may leave out a line entirely, so read with :- under set -u.
   if [[ -z "${!base:-}" || -z "${!key:-}" || -z "${!model:-}" || -z "${!fmt:-}" ]]; then
@@ -22,7 +22,7 @@ for n in "${names[@]}"; do
   else
     agt provider create "$name" --base-url "${!base}" --api-key-env "$key" >/dev/null
   fi
-  args=(--api-format "${!fmt}" --tool-call true --timeout 600)
+  args=(--api-format "${!fmt}" --tool-call true --timeout "${!timeout:-600}")
   [[ -n "${!effort:-}" ]] && args+=(--reasoning-effort "${!effort}")
   # An existing model keeps its provider and model name; delete it to change those.
   if agt model info "$name" >/dev/null 2>&1; then

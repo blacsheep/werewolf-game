@@ -23,8 +23,8 @@ config["scheduler"].update(concurrency=4, discussion_seconds=None, replies_per_a
 # game of several hundred tool calls, so everything runs without asking.
 config["permissions"].update(mode="auto_allow", harness_mode="auto_allow", reviewer_model=f"default/{model}", request_timeout_seconds=3600)
 # Voice and replay run the project's tools on this machine; voicing a game takes
-# tens of minutes, well past the default 300-second limit.
-config["execution"].update(enabled=True, timeout_seconds=7200)
+# tens of minutes, well past the default 300-second limit, so allow three hours.
+config["execution"].update(enabled=True, timeout_seconds=10800)
 json.dump(config, open(path, "w"), indent=2)
 EOF
 agt config apply "$root/.agt/config.yaml.new" >/dev/null && rm "$root/.agt/config.yaml.new"
