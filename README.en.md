@@ -111,13 +111,26 @@ The argument to `setup-team.sh` is a model name that `setup-models.sh` created, 
 
 Open the console, message the lead and say "开一局狼人杀". The lead asks you once about the following; reply "默认" ("defaults") to start right away:
 
-1. Game id: the next unused one by default.
+1. Game id: not a choice; the engine takes the smallest unused one under `games/` (g001, g002, …).
 2. The model for each seat: the lead's model for the God and all 12 players by default, or one per seat.
 3. The setup: only the 12-seat game in [docs/rules.md](docs/rules.md) is supported for now.
 4. Which outputs you want: audio, replay and video by default.
 5. Anything else, such as how the players talk or how the God narrates.
 
 When it is done, the lead reports the winner, every role, where the outputs are and how the voice check went. For another game, say the same thing again.
+
+### Permissions: everything is allowed by default
+
+`setup-team.sh` sets this workspace's tool approval to "allow automatically" (`permissions.mode: auto_allow`), so every agent's tool calls run without asking. A game makes several hundred engine calls, and it would stall if each one waited for approval.
+
+Voice and replay can run commands on this machine. The commands run as the user who runs agt, outside any sandbox, and with automatic approval they do not ask you first. Run it this way only on a machine and account where you trust the models you use, or inside a virtual machine or container.
+
+If you do not want everything allowed, change "Native approval policy" in the web console under Settings → Tool approvals:
+
+- **Model review, doubtful calls to you** (`model_review`): a reviewer model allows or denies each call and hands you the ones it is unsure about. `setup-team.sh` already made the model you passed it the reviewer, so it works as soon as you switch; it costs one more model call per tool call.
+- **Manual** (`manual`): every call waits for you, so you have to stay with the game the whole time. A request left for an hour (`request_timeout_seconds: 3600`) cancels that run.
+
+Running `scripts/setup-team.sh` again sets the mode back to automatic, so change it again afterwards. See [Permissions](https://blacsheep.github.io/agt/guide/permissions) and [Local execution](https://blacsheep.github.io/agt/guide/local-execution) in the agt docs for the details of each mode.
 
 ## What each game produces
 
@@ -131,12 +144,16 @@ When it is done, the lead reports the winner, every role, where the outputs are 
 | `games/<id>/replay/index.html` | the web replay; open it in a browser |
 | `games/<id>/replay/god.mp4` | the God's-view video |
 
-[examples/sample-game](examples/sample-game) holds the event log, seats, transcript and timeline of a complete game (the wolves win on day 4), so you can read one through without running any model.
-
-You can also rebuild the audio and the replay by hand:
+[examples/sample-game](examples/sample-game) holds the event log, seats, transcript and timeline of a complete game (the wolves win on day 4). You can watch its web replay without configuring any model (silent; the subtitles keep the original timing):
 
 ```bash
-tools/tts/run.sh --public <public group id>
+scripts/sample-replay.sh    # builds games/sample/replay/index.html; open it in a browser
+```
+
+You can also rebuild the audio and the replay by hand. Both tools work on `games/current` (the latest game) unless `--game` names another. Pass the public group id only the first time a game is voiced; it is then read from the game's `tts.json`. The wolves' group is recorded by the engine and needs no id.
+
+```bash
+tools/tts/run.sh --game games/g001 [--public <public group id>]
 uv run --with pillow python tools/replay/build.py --game games/g001
 ```
 
@@ -153,7 +170,7 @@ docs/skills/         werewolf-game for the lead, ww-playbook for the players
 docs/brief.md        the staged requirements the lead was given to build this project
 tools/tts/           voices: merge the chats, synthesize with edge-tts, join, verify
 tools/replay/        replay: web page, public audio track, God's-view mp4
-scripts/             setup, console, screen recording
+scripts/             setup, console, screen recording, sample replay
 examples/            a sample game
 ```
 
@@ -185,7 +202,7 @@ scripts/make-video.sh run1                                         # a sped-up m
 
 ## Built by agents
 
-The engine, the voice pipeline and the replay tools were written by coding agents in agt, stage by stage, from [docs/brief.md](docs/brief.md); people only gave the requirements and checked the results.
+The engine, the voice pipeline and the replay tools were written by coding agents in agt, stage by stage, from [docs/brief.md](docs/brief.md); people only gave the requirements and checked the results. Those agents ran on the Codex and Claude Code harnesses; opening a game, voicing and replay now use only agt's own agents, and the brief strikes through what has changed since (in Chinese).
 
 ## License
 

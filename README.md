@@ -111,13 +111,26 @@ scripts/console.sh &                 # 启动 Web 控制台，地址写在 recor
 
 打开控制台，私聊 lead，说「开一局狼人杀」。lead 会用一条消息和你对齐以下几项，回复「默认」就直接开跑：
 
-1. 对局编号：默认自动选下一个未用的编号。
+1. 对局编号：不用选，由引擎自动取 `games/` 下最小的未用编号（g001、g002……）。
 2. 每个座位用哪个模型：默认上帝和 12 名玩家都用 lead 的模型，也可以逐个座位指定。
 3. 板子：目前只支持 12 人预女猎守，规则见 [docs/rules.md](docs/rules.md)。
 4. 要哪些产出：默认语音、回放和视频都要。
 5. 其他要求，比如玩家风格、解说语气。
 
 跑完后，lead 会汇报胜方、全员身份、产出路径和语音核验结果。想再来一局，还是说同一句话。
+
+### 权限：默认全部放行
+
+`setup-team.sh` 把这个工作空间的工具审批设成了「自动放行」（`permissions.mode: auto_allow`），所有 agent 调用工具都不经确认直接执行。这是因为一局要调用几百次引擎工具，每次都等审批的话对局会停住。
+
+其中 voice 和 replay 能在本机执行命令。命令以运行 agt 的用户身份执行，不在沙箱里，自动放行时也不会先问你。请只在你信任所用模型的机器和账号上这样跑，或者放进虚拟机、容器里。
+
+不想全部放行的话，在 Web 控制台的「运行设置」→「工具权限审批」里，把「Native 权限审核策略」换成别的模式：
+
+- **模型审核，异常转人工**（`model_review`）：由审核模型逐次批准或拒绝，拿不准的转给你。`setup-team.sh` 已经把审核模型设成你传入的那个模型，切过去就能用；代价是每次工具调用多一次模型调用。
+- **人工审批**（`manual`）：每次调用都等你批准，一局基本要全程守着。请求超过 1 小时（`request_timeout_seconds: 3600`）没处理，这次执行会被取消。
+
+重新运行 `scripts/setup-team.sh` 会把模式改回自动放行，之后要再改一次。各模式的细节见 agt 文档的[权限审批](https://blacsheep.github.io/agt/zh/guide/permissions)和[本机命令执行](https://blacsheep.github.io/agt/zh/guide/local-execution)。
 
 ## 每局的产出
 
@@ -131,12 +144,16 @@ scripts/console.sh &                 # 启动 Web 控制台，地址写在 recor
 | `games/<局>/replay/index.html` | 网页回放，用浏览器直接打开 |
 | `games/<局>/replay/god.mp4` | 上帝视角视频 |
 
-[examples/sample-game](examples/sample-game) 是一局完整对局（狼人第 4 天获胜）的事件日志、座位表、发言记录和时间线，不用跑模型也能看一局是怎么打的。
-
-也可以不经过 agent，手动重做语音和回放：
+[examples/sample-game](examples/sample-game) 是一局完整对局（狼人第 4 天获胜）的事件日志、座位表、发言记录和时间线。不配模型也能看它的网页回放（没有声音，字幕按原时间轴走）：
 
 ```bash
-tools/tts/run.sh --public <公共群 ID>
+scripts/sample-replay.sh    # 生成 games/sample/replay/index.html，用浏览器打开
+```
+
+也可以不经过 agent，手动重做语音和回放。两个工具默认处理 `games/current`（最新一局），用 `--game` 指定其他局。公共群 ID 只在一局第一次配音时传，之后从该局的 `tts.json` 读取；狼队群由引擎记录，不用传。
+
+```bash
+tools/tts/run.sh --game games/g001 [--public <公共群 ID>]
 uv run --with pillow python tools/replay/build.py --game games/g001
 ```
 
@@ -153,7 +170,7 @@ docs/skills/         lead 用的 werewolf-game，玩家用的 ww-playbook
 docs/brief.md        搭建这个项目时分阶段发给 lead 的原始需求
 tools/tts/           配音：整理发言、edge-tts 合成、拼接、核验
 tools/replay/        回放：网页、公开音轨、上帝视角 mp4
-scripts/             初始化、控制台、录屏
+scripts/             初始化、控制台、录屏、示例回放
 examples/            示例对局
 ```
 
@@ -185,7 +202,7 @@ scripts/make-video.sh run1                                         # 合成加�
 
 ## 这个项目本身也是 agent 写的
 
-引擎、配音和回放工具都是 agt 里的编码 agent 按 [docs/brief.md](docs/brief.md) 分阶段写出来的，人只负责提需求和验收。
+引擎、配音和回放工具都是 agt 里的编码 agent 按 [docs/brief.md](docs/brief.md) 分阶段写出来的，人只负责提需求和验收。当时这些 agent 跑在 Codex 和 Claude Code 两个 harness 上；现在开局、配音和回放都只用 agt 自带的 agent，brief 里改过的做法用删除线标出。
 
 ## License
 
