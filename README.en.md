@@ -201,6 +201,10 @@ scripts/make-video.sh run1                                         # a sped-up m
 - Models sometimes break the table rules in what they say, such as speaking too long or opening a private group. The engine refuses illegal actions but cannot control what a model says.
 - A game makes a great many model calls; estimate the cost before you start.
 
+## Acknowledgements
+
+Thanks to the [LINUX DO](https://linux.do) community for its support and discussions.
+
 ## License
 
 [MIT](LICENSE)

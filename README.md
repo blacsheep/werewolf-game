@@ -201,6 +201,10 @@ scripts/make-video.sh run1                                         # 合成加�
 - 模型偶尔不守发言规则，比如超长或私下拉群。引擎会拒绝非法动作，但管不了模型说什么。
 - 一局的模型调用量很大，开跑前请先估算费用。
 
+## 致谢
+
+感谢 [LINUX DO](https://linux.do) 社区的支持与交流。
+
 ## License
 
 [MIT](LICENSE)
