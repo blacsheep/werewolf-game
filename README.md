@@ -2,6 +2,12 @@
 
 [English](README.en.md) | 中文
 
+[![test](https://github.com/blacsheep/werewolf-game/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/blacsheep/werewolf-game/actions/workflows/test.yml)
+[![License: MIT](https://img.shields.io/github/license/blacsheep/werewolf-game)](LICENSE)
+![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)
+![Linux | macOS](https://img.shields.io/badge/platform-Linux%20%7C%20macOS-lightgrey)
+[![Built on agt](https://img.shields.io/badge/built%20on-agt-8A2BE2)](https://github.com/blacsheep/agt)
+
 12 个 AI 玩家打一局 12 人预女猎守，由一个 AI 上帝主持，打完自动配音，并生成可以切换上帝视角和玩家视角的回放和视频。
 
 你只需要对 lead 说一句「开一局狼人杀」，再回答一次配置确认。之后的组队、建群、主持、配音和出视频都由 agent 自己完成，中途不用人盯。项目基于 [agt](https://github.com/blacsheep/agt)。

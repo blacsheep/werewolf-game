@@ -2,6 +2,12 @@
 
 English | [中文](README.md)
 
+[![test](https://github.com/blacsheep/werewolf-game/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/blacsheep/werewolf-game/actions/workflows/test.yml)
+[![License: MIT](https://img.shields.io/github/license/blacsheep/werewolf-game)](LICENSE)
+![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)
+![Linux | macOS](https://img.shields.io/badge/platform-Linux%20%7C%20macOS-lightgrey)
+[![Built on agt](https://img.shields.io/badge/built%20on-agt-8A2BE2)](https://github.com/blacsheep/agt)
+
 Twelve AI players play a 12-seat Werewolf game (Seer, Witch, Hunter, Guard, four villagers, four wolves), hosted by an AI God. When the game ends it is voiced, and turned into a replay and a video you can watch from the God's view or a player's view. The game is played in Chinese.
 
 You tell the lead agent "开一局狼人杀" ("start a game of werewolf") and answer one setup question. The agents do the rest: they build the team, open the chats, host the game, record the voices and render the video, with nobody watching. Built on [agt](https://github.com/blacsheep/agt).
